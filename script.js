@@ -4,7 +4,6 @@ document.addEventListener("click", () => {
 
 // Maybe prefetch the item first?
 const substituteImage = (input, event) => {
-  debugger
   if (event.target.nodeName === 'INPUT' && event.target.attributes['type']['nodeValue'] === 'file' && event.target?.files[0]?.name != "delete_key.png") {
     event.stopImmediatePropagation()
     const dT = new DataTransfer();
@@ -14,7 +13,6 @@ const substituteImage = (input, event) => {
         const file = new File([blob], "delete_key.png", { type: "image/png" });
         dT.items.add(file);
         input.files = dT.files;
-        console.log(input.files)
         event.target.dispatchEvent(event);
     })
   }
