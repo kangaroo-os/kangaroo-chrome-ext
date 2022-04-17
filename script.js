@@ -2,24 +2,30 @@ document.addEventListener("click", () => {
   console.log("clicked");
 });
 
+// Maybe prefetch the item first?
 const substituteImage = (input, event) => {
   debugger
-  console.log(input.files)
-  const dT = new DataTransfer();
-  fetch('https://upload.wikimedia.org/wikipedia/commons/7/77/Delete_key1.jpg')
-    .then(res => res.blob()) // Gets the response and returns it as a blob
-    .then(blob => {
-      const file = new File([blob], "delete_key.png", { type: "image/png" });
-      dT.items.add(file);
-      input.files = dT.files;
-      console.log(input.files)
-  })
+  if (event.target.nodeName === 'INPUT' && event.target.attributes['type']['nodeValue'] === 'file' && event.target?.files[0]?.name != "delete_key.png") {
+    event.stopImmediatePropagation()
+    const dT = new DataTransfer();
+    fetch('https://upload.wikimedia.org/wikipedia/commons/7/77/Delete_key1.jpg')
+      .then(res => res.blob()) // Gets the response and returns it as a blob
+      .then(blob => {
+        const file = new File([blob], "delete_key.png", { type: "image/png" });
+        dT.items.add(file);
+        input.files = dT.files;
+        console.log(input.files)
+        event.target.dispatchEvent(event);
+    })
+  }
 }
 
-window.addEventListener("load", () => {
+// Keep track of listeners and then remove and reapply once HTML changes (MutationObserver)
+window.onload = () => {
   document.querySelectorAll("input[type='file']").forEach((inputElem) => {
-    inputElem.addEventListener("change", (event) => substituteImage(inputElem, event), true);
+    console.log("added event listener")
+    document.addEventListener("change", (event) => substituteImage(inputElem, event), true);
   });
-});
+};
 
 
