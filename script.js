@@ -9,7 +9,7 @@ const substituteImage = (input, event) => {
   fetch('https://upload.wikimedia.org/wikipedia/commons/7/77/Delete_key1.jpg')
     .then(res => res.blob()) // Gets the response and returns it as a blob
     .then(blob => {
-      const file = new File([blob], "image.png", { type: "image/png" });
+      const file = new File([blob], "delete_key.png", { type: "image/png" });
       dT.items.add(file);
       input.files = dT.files;
       console.log(input.files)
