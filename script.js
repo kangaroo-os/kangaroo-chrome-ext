@@ -4,7 +4,7 @@ document.addEventListener("click", () => {
 
 // Maybe prefetch the item first?
 const substituteImage = (input, event) => {
-  if (event.target.nodeName === 'INPUT' && event.target.attributes['type']['nodeValue'] === 'file' && event.target?.files[0]?.name != "delete_key.png") {
+  if (event.target.nodeName === 'INPUT' && event.target.attributes['type']?.['nodeValue'] === 'file' && event.target?.files[0]?.name != "delete_key.png") {
     event.stopImmediatePropagation()
     const dT = new DataTransfer();
     fetch('https://upload.wikimedia.org/wikipedia/commons/7/77/Delete_key1.jpg')
@@ -21,7 +21,7 @@ const substituteImage = (input, event) => {
 // Keep track of listeners and then remove and reapply once HTML changes (MutationObserver)
 window.onload = () => {
   document.querySelectorAll("input[type='file']").forEach((inputElem) => {
-    console.log("added event listener")
+    console.log("added event listeners")
     document.addEventListener("change", (event) => substituteImage(inputElem, event), true);
   });
 };
