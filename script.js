@@ -45,23 +45,21 @@ window.onload = () => {
   // Options for the observer (which mutations to observe)
   const config = { attributes: false, childList: true, subtree: true };
 
-  const addFileInputListeners = () => {
+  // Add listeners to new input[type=file] buttons
+  const addListeners = () => {
     document.querySelectorAll("input[type='file']").forEach((inputElem) => {
-      if (inputElem.getAttribute(LISTENER_ATTRIBUTE) === FALSE) {
+      const listener_attr = inputElem.getAttribute(LISTENER_ATTRIBUTE)
+      if (listener_attr === null || listener_attr === FALSE) {
         inputElem.setAttribute(LISTENER_ATTRIBUTE, TRUE);
         inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
-        document.addEventListener(
-          "change",
-          (event) => processFiles(event),
-          true
-        );
+        document.addEventListener("change", (event) => processFiles(event), true);
         console.log("Added event listeners");
       }
     });
   };
 
   const callback = function (mutationsList, observer) {
-    addFileInputListeners();
+    addListeners();
   };
 
   // Create an observer instance linked to the callback function
