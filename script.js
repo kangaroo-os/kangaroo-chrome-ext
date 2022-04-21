@@ -50,13 +50,23 @@ window.onload = () => {
     document.querySelectorAll("input[type='file']").forEach((inputElem) => {
       const listener_attr = inputElem.getAttribute(LISTENER_ATTRIBUTE)
       if (listener_attr === null || listener_attr === FALSE) {
-        inputElem.setAttribute(LISTENER_ATTRIBUTE, TRUE);
-        inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
+        setupToolset(input)
         document.addEventListener("change", (event) => processFiles(event), true);
         console.log("Added event listeners");
       }
     });
   };
+
+  const setupToolset = (input) => {
+    input.setAttribute(LISTENER_ATTRIBUTE, TRUE);
+    input.setAttribute(SHOULD_INTERCEPT, TRUE);
+
+    // Accept our hack to use .cloud files
+    const type_of_files = inputElem.getAttribute("accept")
+    if (!!type_of_files) {
+      input.setAttribute(type_of_files.concat(',.cloud'))
+    }
+  }
 
   const callback = function (mutationsList, observer) {
     addListeners();
