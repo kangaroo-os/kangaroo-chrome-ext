@@ -2,15 +2,22 @@
   "manifest_version": 3,
   "version": "1.0",
   "name": "Manifest 3 first version",
-  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["content_script.js"], "run_at": "document_end" }],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_script.js"],
+      "run_at": "document_end"
+    }
+  ],
   "background": {
     "service_worker": "background.js"
   },
-  "web_accessible_resources": [{
-    "resources": ["script.js"],
-    "matches": ["<all_urls>"]
-  }],
-  "action": { "default_icon": "icon.png" },
+  "web_accessible_resources": [
+    {
+      "resources": ["script.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": { "default_popup": "popup.html", "default_icon": "icon.png" },
   "host_permissions": ["https://*/*"]
-  
 }

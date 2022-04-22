@@ -1,7 +1,3 @@
-document.addEventListener("click", () => {
-  console.log("clicked");
-});
-
 const LISTENER_ATTRIBUTE = "kangaroo-listener";
 const SHOULD_INTERCEPT = "kangaroo-intercept";
 const TRUE = 'true'
@@ -30,9 +26,10 @@ const scanAndReplaceFiles = async (event) => {
   input.dispatchEvent(event);
 };
 
-const processFiles = (event) => {
+const onClick = async (event) => {
   const input = event.target;
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
+    // syncWithCloud(event)
     scanAndReplaceFiles(event);
   } else {
     input.setAttribute(SHOULD_INTERCEPT, TRUE);
@@ -50,21 +47,21 @@ window.onload = () => {
     document.querySelectorAll("input[type='file']").forEach((inputElem) => {
       const listener_attr = inputElem.getAttribute(LISTENER_ATTRIBUTE)
       if (listener_attr === null || listener_attr === FALSE) {
-        setupToolset(input)
-        document.addEventListener("change", (event) => processFiles(event), true);
+        setupToolset(inputElem)
+        document.addEventListener("click", (event) => onClick(event), true);
         console.log("Added event listeners");
       }
     });
   };
 
-  const setupToolset = (input) => {
-    input.setAttribute(LISTENER_ATTRIBUTE, TRUE);
-    input.setAttribute(SHOULD_INTERCEPT, TRUE);
+  const setupToolset = (inputElem) => {
+    inputElem.setAttribute(LISTENER_ATTRIBUTE, TRUE);
+    inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
 
     // Accept our hack to use .cloud files
     const type_of_files = inputElem.getAttribute("accept")
     if (!!type_of_files) {
-      input.setAttribute(type_of_files.concat(',.cloud'))
+      inputElem.setAttribute(type_of_files.concat(',.cloud'))
     }
   }
 
