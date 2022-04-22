@@ -7,24 +7,12 @@ const save = async (handle, text) => {
   await writable.close();
 }
 
-const syncWithCloud = async () => {
-  // const directoryHandle = await window.showDirectoryPicker();
-  // const res = await fetch(
-  //   "https://0gfitk1wo8.execute-api.us-east-1.amazonaws.com/default/s3-read"
-  // );
-  // const json = await res.json();
-  // json["Contents"].forEach(async (obj) => {
-  //   const fileHandle = await directoryHandle.getFileHandle(obj["Key"], {
-  //     create: true,
-  //   });
-  //   await save(fileHandle, "blank");
-  // });
+const tellContentScriptToSyncFiles = async () => {
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     chrome.tabs.sendMessage(tabs[0].id, {event: "sync-files" }, () => {});
   });
 };
 
-
 window.onload = () => {
-  document.getElementById('sync-btn').addEventListener("click", syncWithCloud);
+  document.getElementById('sync-btn').addEventListener("click", tellContentScriptToSyncFiles);
 }
