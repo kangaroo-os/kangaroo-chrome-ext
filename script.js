@@ -32,7 +32,6 @@ const onChange = async (event) => {
       await scanAndReplaceFiles(event);
       input.dispatchEvent(new Event('change', event));
     } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
-      debugger
       // Reset for next time
       input.setAttribute(SHOULD_INTERCEPT, TRUE);
     }
