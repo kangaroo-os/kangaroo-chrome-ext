@@ -1,11 +1,9 @@
-const LISTENER_ATTRIBUTE = "kangaroo-listener";
 const SHOULD_INTERCEPT = "kangaroo-intercept";
 const TRUE = 'true'
 const FALSE = 'false'
 
 // Maybe prefetch the item first?
 const scanAndReplaceFiles = async (event) => {
-  event.stopImmediatePropagation();
   const input = event.target;
   const dT = new DataTransfer();
   for (let i = 0; i < input.files.length; i++) {
@@ -21,20 +19,33 @@ const scanAndReplaceFiles = async (event) => {
     dT.items.add(file);
   }
   input.files = dT.files;
-  // Dispatch original event and this time don't intercept.
-  input.setAttribute(SHOULD_INTERCEPT, FALSE);
-  input.dispatchEvent(event);
 };
 
-const onClick = async (event) => {
+const onChange = async (event) => {
   const input = event.target;
-  if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
-    // syncWithCloud(event)
-    scanAndReplaceFiles(event);
-  } else {
-    input.setAttribute(SHOULD_INTERCEPT, TRUE);
+  if (isFileInput(input) && hasFiles(input)) {
+    console.log("File input detected.");
+    if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
+      event.stopImmediatePropagation();
+      // Don't intercept when we refire the event
+      input.setAttribute(SHOULD_INTERCEPT, FALSE);
+      await scanAndReplaceFiles(event);
+      input.dispatchEvent(new Event('change', event));
+    } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
+      debugger
+      // Reset for next time
+      input.setAttribute(SHOULD_INTERCEPT, TRUE);
+    }
   }
 };
+
+const isFileInput = (elem) => {
+  return elem.nodeName === "INPUT" && elem.type === "file";
+}
+
+const hasFiles = (input) => {
+  return input.files.length > 0
+}
 
 // Keep track of listeners and then remove and reapply once HTML changes (MutationObserver)
 window.onload = () => {
@@ -44,24 +55,24 @@ window.onload = () => {
 
   // Add listeners to new input[type=file] buttons
   const addListeners = () => {
-    document.querySelectorAll("input[type='file']").forEach((inputElem) => {
-      const listener_attr = inputElem.getAttribute(LISTENER_ATTRIBUTE)
-      if (listener_attr === null || listener_attr === FALSE) {
+    inputButtons = document.querySelectorAll("input[type='file']")
+
+    inputButtons.forEach((inputElem) => {
+      if (inputElem.getAttribute(SHOULD_INTERCEPT) === null) {
         setupToolset(inputElem)
-        document.addEventListener("click", (event) => onClick(event), true);
-        console.log("Added event listeners");
+        inputElem.addEventListener("change", (event) => onChange(event), true);
+        console.log("New input button detected.");
       }
     });
   };
 
   const setupToolset = (inputElem) => {
-    inputElem.setAttribute(LISTENER_ATTRIBUTE, TRUE);
     inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
 
     // Accept our hack to use .cloud files
     const type_of_files = inputElem.getAttribute("accept")
     if (!!type_of_files) {
-      inputElem.setAttribute(type_of_files.concat(',.cloud'))
+      inputElem.setAttribute('accept', type_of_files.concat(',.cloud'))
     }
   }
 
