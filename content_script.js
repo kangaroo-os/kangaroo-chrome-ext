@@ -1,9 +1,12 @@
-const s = document.createElement('script');
-s.src = chrome.runtime.getURL('script.js');
-s.onload = function() {
-  this.remove();
-};
-(document.head || document.documentElement).appendChild(s);
+const injectScript = () => {
+  const script = document.createElement('script');
+  script.src = chrome.runtime.getURL('script.js');
+  script.onload = function() {
+    this.remove();
+  };
+  (document.head || document.documentElement).appendChild(script);
+}
+injectScript()
 
 const save = async (handle, text) => {
   // creates a writable, used to write data to the file.
@@ -33,8 +36,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     syncWithCloud();
     sendResponse({status: 'ok'});
   }
-});
-
-document.addEventListener("click", () => {
-  console.log("clicked");
 });
