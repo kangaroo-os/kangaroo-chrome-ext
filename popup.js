@@ -1,5 +1,11 @@
 const BASE_URL = "http://localhost:3000";
 
+const alertIfError = (truthy, message) => {
+  if (!truthy) {
+    alert(message)
+  }
+}
+
 const tellContentScriptToSyncFiles = async () => {
     const tabs = await chrome.tabs.query({active: true, currentWindow: true})
     chrome.tabs.sendMessage(tabs[0].id, {event: "sync-files" });
@@ -16,11 +22,13 @@ const fetchSessionTokenFromWebapp = async () => {
       successful = true
     }
   }
-  if (!successful) {
-    alert('Please open and log into kangaroo first')
+  alertIfError(successful, 'Please open and log in into Kangaroo and retry')
+  if (successful) {
+    document.getElementById('test-btn').style.display = 'block';
   }
 }
 
+// Should make wrapper around api calls to server
 const test = async () => {
   const res = await fetch(`${BASE_URL}/files`, {
     method: 'GET',
