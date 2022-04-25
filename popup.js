@@ -1,11 +1,5 @@
 const BASE_URL = "http://localhost:3000";
 
-const alertIfError = (truthy, message) => {
-  if (!truthy) {
-    alert(message)
-  }
-}
-
 const tellContentScriptToSyncFiles = async () => {
     const tabs = await chrome.tabs.query({active: true, currentWindow: true})
     chrome.tabs.sendMessage(tabs[0].id, {event: "sync-files" });
@@ -22,8 +16,13 @@ const fetchSessionTokenFromWebapp = async () => {
       successful = true
     }
   }
-  alertIfError(successful, 'Please open and log in into Kangaroo and retry')
-  if (successful) {
+  handleSessionChange(successful)
+}
+
+const handleSessionChange = (successful) => {
+  if (!truthy) {
+    alert('Please open and log in into Kangaroo and retry')
+  } else {
     document.getElementById('test-btn').style.display = 'block';
   }
 }
