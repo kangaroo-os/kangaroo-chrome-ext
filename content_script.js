@@ -1,13 +1,3 @@
-// const injectScript = () => {
-//   const script = document.createElement('script');
-//   script.src = chrome.runtime.getURL('script.js');
-//   script.onload = function() {
-//     this.remove();
-//   };
-//   (document.head || document.documentElement).appendChild(script);
-// }
-// injectScript()
-
 const save = async (handle, text) => {
   // creates a writable, used to write data to the file.
   const writable = await handle.createWritable();
@@ -46,7 +36,6 @@ const BASE_URL = 'http://localhost:3000'
 const getFileNamesFromS3 = async () => {
   const storage = await chrome.storage.local.get('file_names_s3')
   const fileNames = storage['file_names_s3']
-  debugger
   if (!fileNames) {
     alert("failed to get name of files from S3")
   }
@@ -62,13 +51,11 @@ const scanAndReplaceFiles = async (event) => {
     const fileNamesFromS3 = await getFileNamesFromS3();
     if (fileNamesFromS3?.some((key) => key === file.name)) {
       console.log("cloud file detected");
-      const res = await fetch(
-        `${BASE_URL}/get_files`,
-        new URLSearchParams({ key: file.name })
-      );
-      debugger
-      const blob = await res.blob();
-      file = new File([blob], file.name, { type: file.type });
+      const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileName: file.name, fileType: file.type});
+      if (response.status === 'ok') {
+        // How do I send the file back in JSON?
+        file = response.file;
+      }
     }
     dT.items.add(file);
   }

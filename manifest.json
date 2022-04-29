@@ -20,9 +20,9 @@
   ],
   "permissions": [
     "cookies",
-    "tabs",
-    "storage"
+    "storage",
+    "tabs"
   ],
   "action": { "default_popup": "popup.html", "default_icon": "icon.png" },
-  "host_permissions": ["https://*/*", "http://localhost:3000/"]
+  "host_permissions": ["https://*/*", "http://*/*"]
 }

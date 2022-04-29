@@ -5,41 +5,41 @@ const tellContentScriptToSyncFiles = async () => {
 };
 
 const fetchSessionTokenFromWebapp = async () => {
-  let successful = false
+  await handleSessionChange(!!(await getKangarooTab()))
+}
+
+const getFileNames = async () => {
+  const res = await fetch(`${BASE_URL}/files`);
+  const { files } = await res.json();
+  return files
+}
+
+const getKangarooTab = async () => {
   const tabs = await chrome.tabs.query({ currentWindow: true})
   for (let i = 0; i < tabs.length; i++) {
     const url = tabs[i].url
-    if (!successful && url.startsWith(BASE_URL)) {
-      const cookie = await chrome.cookies.get({name: 'kangaroo_token', url: url})
-      localStorage.setItem('kangaroo_token', cookie.value);
-      successful = true
+    if (url?.startsWith(BASE_URL)) {
+      return tabs[i]
     }
   }
-  await handleSessionChange(successful)
+  return null
 }
 
 const handleSessionChange = async (successful) => {
   if (!successful) {
     alert('Please open and log in into Kangaroo and retry')
   } else {
-    const res = await fetch(`${BASE_URL}/files`, {
-      method: 'GET',
-      headers: new Headers({
-        'Authorization': `Bearer ${localStorage.getItem('kangaroo_token')}`,
-      }),
-    });
-    const { files } = await res.json();
-    await chrome.storage.local.set({'file_names_s3': JSON.stringify(files)})
-    document.getElementById('test-btn').style.display = 'block';
+    const tab = await getKangarooTab()
+    if (tab) {
+      const fileNames = await getFileNames()
+      await chrome.storage.local.set({'file_names_s3': JSON.stringify(fileNames)})
+      document.getElementById('test-btn').style.display = 'block';
+    }
   }
 }
 
-// Should make wrapper around api calls to server
-const test = async () => {
-};
-
 window.onload = () => {
-  document.getElementById('test-btn').addEventListener("click", test);
+  document.getElementById('test-btn')
   document.getElementById('sync-btn').addEventListener("click", tellContentScriptToSyncFiles);
   document.getElementById('sync-session-btn').addEventListener("click", fetchSessionTokenFromWebapp);
 }
