@@ -23,8 +23,11 @@ const syncWithCloud = async () => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.event === 'sync-files') {
-    syncWithCloud();
-    sendResponse({status: 'ok'});
+    (async () => {
+      await syncWithCloud();
+      sendResponse({status: 'ok'});
+    })();
+    return true
   }
 });
 
@@ -51,7 +54,7 @@ const scanAndReplaceFiles = async (event) => {
     const fileNamesFromS3 = await getFileNames();
     if (fileNamesFromS3?.some((key) => key === file.name)) {
       console.log("cloud file detected");
-      const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileName: file.name, fileType: file.type});
+      const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileName: file.name});
       if (response.status === 'ok') {
         const res = await fetch(response.url)
         const blob = await res.blob()

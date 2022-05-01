@@ -1,7 +1,8 @@
 const BASE_URL = "http://localhost:3000";
 
 const tellContentScriptToSyncFiles = async () => {
-  await chrome.runtime.sendMessage({event: "sync-files" });
+  const tab = await getCurrentTab()
+  await chrome.tabs.sendMessage(tab.id, {event: "sync-files" });
 };
 
 const fetchSessionTokenFromWebapp = async () => {
@@ -12,6 +13,11 @@ const getFileNamesFromS3 = async () => {
   const res = await fetch(`${BASE_URL}/files`);
   const { files } = await res.json();
   return files
+}
+
+const getCurrentTab = async () => {
+  const [tab] = await chrome.tabs.query({ currentWindow: true, active: true })
+  return tab
 }
 
 const getKangarooTab = async () => {
