@@ -33,7 +33,7 @@ const TRUE = 'true'
 const FALSE = 'false'
 const BASE_URL = 'http://localhost:3000'
 
-const getFileNamesFromS3 = async () => {
+const getFileNames = async () => {
   const storage = await chrome.storage.local.get('file_names_s3')
   const fileNames = storage['file_names_s3']
   if (!fileNames) {
@@ -48,13 +48,15 @@ const scanAndReplaceFiles = async (event) => {
   const dT = new DataTransfer();
   for (let i = 0; i < input.files.length; i++) {
     let file = input.files[i];
-    const fileNamesFromS3 = await getFileNamesFromS3();
+    const fileNamesFromS3 = await getFileNames();
     if (fileNamesFromS3?.some((key) => key === file.name)) {
       console.log("cloud file detected");
       const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileName: file.name, fileType: file.type});
       if (response.status === 'ok') {
-        // How do I send the file back in JSON?
-        file = response.file;
+        const res = await fetch(response.url)
+        const blob = await res.blob()
+        const fileFromS3 = new File([blob], file.name, { type: file.type});
+        file = fileFromS3
       }
     }
     dT.items.add(file);

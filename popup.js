@@ -8,7 +8,7 @@ const fetchSessionTokenFromWebapp = async () => {
   await handleSessionChange(!!(await getKangarooTab()))
 }
 
-const getFileNames = async () => {
+const getFileNamesFromS3 = async () => {
   const res = await fetch(`${BASE_URL}/files`);
   const { files } = await res.json();
   return files
@@ -31,7 +31,7 @@ const handleSessionChange = async (successful) => {
   } else {
     const tab = await getKangarooTab()
     if (tab) {
-      const fileNames = await getFileNames()
+      const fileNames = await getFileNamesFromS3()
       await chrome.storage.local.set({'file_names_s3': JSON.stringify(fileNames)})
       document.getElementById('test-btn').style.display = 'block';
     }
