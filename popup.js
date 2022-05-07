@@ -10,7 +10,7 @@ const fetchSessionTokenFromWebapp = async () => {
 }
 
 const getFileNamesFromS3 = async () => {
-  const res = await fetch(`${BASE_URL}/files`);
+  const res = await fetch(`${BASE_URL}/cloud_files`);
   const { files } = await res.json();
   return files
 }
@@ -37,15 +37,37 @@ const handleSessionChange = async (successful) => {
   } else {
     const tab = await getKangarooTab()
     if (tab) {
-      const fileNames = await getFileNamesFromS3()
-      await chrome.storage.local.set({'file_names_s3': JSON.stringify(fileNames)})
+      const cloudFiles = await getFileNamesFromS3()
+      await chrome.storage.local.set({'cloud_files': JSON.stringify(cloudFiles)})
       document.getElementById('test-btn').style.display = 'block';
     }
   }
 }
 
 window.onload = () => {
-  document.getElementById('test-btn')
-  document.getElementById('sync-btn').addEventListener("click", tellContentScriptToSyncFiles);
-  document.getElementById('sync-session-btn').addEventListener("click", fetchSessionTokenFromWebapp);
+  // document.getElementById('test-btn')
+  // document.getElementById('sync-btn').addEventListener("click", tellContentScriptToSyncFiles);
+  // document.getElementById('sync-session-btn').addEventListener("click", fetchSessionTokenFromWebapp);
+
+  const loginForm = document.getElementById("login-form");
+  const loginButton = document.getElementById("login-form-submit");
+  const loginErrorMsg = document.getElementById("login-error-msg");
+  loginButton.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const email = loginForm.email.value;
+    const password = loginForm.password.value;
+
+    const response = await fetch(`${BASE_URL}/users/sign_in`, {
+      method: "POST",
+      body: {  
+        "user": {
+            "email": email,
+            "password": password,
+        }
+      }
+    })
+    const json = await response.text()
+    debugger
+  })
+
 }

@@ -1,3 +1,9 @@
+const SHOULD_INTERCEPT = "kangaroo-intercept";
+const TRUE = 'true'
+const FALSE = 'false'
+const BASE_URL = 'http://localhost:3000'
+const CHROME_PDF_VIEWER = 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai'
+
 const save = async (handle, text) => {
   // creates a writable, used to write data to the file.
   const writable = await handle.createWritable();
@@ -28,21 +34,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({status: 'ok'});
     })();
     return true
+  } else if (message.event === 'download-pdf') {
+    (async () => {
+      await downloadPDF(message.info, message.tab);
+      sendResponse({status: 'ok'});
+    })();
+    return true
   }
 });
 
-const SHOULD_INTERCEPT = "kangaroo-intercept";
-const TRUE = 'true'
-const FALSE = 'false'
-const BASE_URL = 'http://localhost:3000'
+const downloadPDF = async (info, tab) => {
+  // if (info.srcUrl.startsWith(CHROME_PDF_VIEWER)) {
+  //     const downloadResponse = await fetch(info.frameUrl)
+  //     const blob = await downloadResponse.blob()
+  //     const file = new File([blob], tab.title, { type: 'application/pdf' });
+  //     const formData = new FormData()
+  //     formData.append('file', file)
+  //     const postResponse =  await fetch(`${BASE_URL}/cloud_files/upload`, {
+  //       method: 'POST',
+  //       body: formData
+  //     })
+  // }
+}
 
 const getFileNames = async () => {
-  const storage = await chrome.storage.local.get('file_names_s3')
-  const fileNames = storage['file_names_s3']
-  if (!fileNames) {
+  (await getCloudFiles()).map((file) => file.name)
+}
+
+const getCloudFiles = async () => {
+  const storage = await chrome.storage.local.get('cloud_files')
+  const cloudFiles = storage['cloud_files']
+  if (!cloudFiles) {
     alert("failed to get name of files from S3")
   }
-  return JSON.parse(fileNames)
+  return JSON.parse(cloudFiles)
 }
 
 // Maybe prefetch the item first?
