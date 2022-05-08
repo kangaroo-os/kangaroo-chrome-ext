@@ -19,11 +19,11 @@
     }
   ],
   "permissions": [
-    "cookies",
+    "scripting",
     "storage",
     "tabs",
     "contextMenus"
   ],
   "action": { "default_popup": "popup.html", "default_icon": "icon.png" },
-  "host_permissions": ["https://*/*", "http://*/*", "chrome://*/*"]
+  "host_permissions": ["https://*/*", "http://*/*"]
 }

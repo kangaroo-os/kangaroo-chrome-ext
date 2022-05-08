@@ -34,28 +34,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({status: 'ok'});
     })();
     return true
-  } else if (message.event === 'download-pdf') {
-    (async () => {
-      await downloadPDF(message.info, message.tab);
-      sendResponse({status: 'ok'});
-    })();
-    return true
   }
 });
-
-const downloadPDF = async (info, tab) => {
-  // if (info.srcUrl.startsWith(CHROME_PDF_VIEWER)) {
-  //     const downloadResponse = await fetch(info.frameUrl)
-  //     const blob = await downloadResponse.blob()
-  //     const file = new File([blob], tab.title, { type: 'application/pdf' });
-  //     const formData = new FormData()
-  //     formData.append('file', file)
-  //     const postResponse =  await fetch(`${BASE_URL}/cloud_files/upload`, {
-  //       method: 'POST',
-  //       body: formData
-  //     })
-  // }
-}
 
 const getFileNames = async () => {
   (await getCloudFiles()).map((file) => file.name)

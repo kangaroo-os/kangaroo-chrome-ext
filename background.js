@@ -1,11 +1,6 @@
 const BASE_URL = 'http://localhost:3000'
 const CHROME_PDF_VIEWER = 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai'
 
-// const downloadPDF = async (info, tab) => {
-//   const currentTab = await getCurrentTab()
-//   await chrome.tabs.sendMessage(currentTab.id, {event: "download-pdf", info: info, tab: tab });
-// };
-
 const downloadPDF = async (info, tab) => {
   if (info.srcUrl.startsWith(CHROME_PDF_VIEWER)) {
       const downloadResponse = await fetch(info.frameUrl)
@@ -14,12 +9,17 @@ const downloadPDF = async (info, tab) => {
       const formData = new FormData()
       formData.append('file', file)
       const postResponse =  await fetch(`${BASE_URL}/cloud_files/upload`, {
+        headers: await getAuthHeader(),
         method: 'POST',
         body: formData
       })
   }
 }
 
+const getAuthHeader = async () => {
+  const storage = await chrome.storage.local.get('auth_header')
+  return storage.auth_header
+}
 
 const getCurrentTab = async () => {
   const [tab] = await chrome.tabs.query({ currentWindow: true, active: true })

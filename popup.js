@@ -5,8 +5,26 @@ const tellContentScriptToSyncFiles = async () => {
   await chrome.tabs.sendMessage(tab.id, {event: "sync-files" });
 };
 
-const fetchSessionTokenFromWebapp = async () => {
-  await handleSessionChange(!!(await getKangarooTab()))
+const fetchSessionTokenFromKangaroo = () => {
+  return sessionStorage.getItem('user')
+}
+
+const fetchSessionToken = async () => {
+  const tab = await getKangarooTab()
+  if (tab) {
+    const [scriptResponse] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      function: fetchSessionTokenFromKangaroo
+    })
+    const { accessToken, client, email, tokenExpiresAt } = JSON.parse(scriptResponse.result)
+    await chrome.storage.local.set({'auth_header': {
+      'access-token': accessToken,
+      'client': client,
+      'expiry': tokenExpiresAt,
+      'uid': email,
+      'token-type': 'Bearer',
+    }})
+  }
 }
 
 const getFileNamesFromS3 = async () => {
@@ -31,43 +49,12 @@ const getKangarooTab = async () => {
   return null
 }
 
-const handleSessionChange = async (successful) => {
-  if (!successful) {
-    alert('Please open and log in into Kangaroo and retry')
-  } else {
-    const tab = await getKangarooTab()
-    if (tab) {
-      const cloudFiles = await getFileNamesFromS3()
-      await chrome.storage.local.set({'cloud_files': JSON.stringify(cloudFiles)})
-      document.getElementById('test-btn').style.display = 'block';
-    }
-  }
-}
-
 window.onload = () => {
-  // document.getElementById('test-btn')
-  // document.getElementById('sync-btn').addEventListener("click", tellContentScriptToSyncFiles);
-  // document.getElementById('sync-session-btn').addEventListener("click", fetchSessionTokenFromWebapp);
-
-  const loginForm = document.getElementById("login-form");
-  const loginButton = document.getElementById("login-form-submit");
-  const loginErrorMsg = document.getElementById("login-error-msg");
-  loginButton.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const email = loginForm.email.value;
-    const password = loginForm.password.value;
-
-    const response = await fetch(`${BASE_URL}/users/sign_in`, {
-      method: "POST",
-      body: {  
-        "user": {
-            "email": email,
-            "password": password,
-        }
-      }
+  document.getElementById('test-btn').addEventListener("click", async () => {
+    await fetch(`${BASE_URL}/logout`, {
+      method: "DELETE"
     })
-    const json = await response.text()
-    debugger
   })
-
+  // document.getElementById('sync-btn').addEventListener("click", tellContentScriptToSyncFiles);
+  document.getElementById('sync-session-btn').addEventListener("click", fetchSessionToken);
 }
