@@ -1,7 +1,8 @@
 const BASE_URL = 'http://localhost:3000'
 const CHROME_PDF_VIEWER = 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai'
+const CHROME_PDF_VIEWER_NO_PROTOCOL = 'mhjfbmdgcfjbbpaeojofohoefgiehjai'
 
-const downloadPDF = async (info, tab) => {
+const downloadAndReuploadPdf = async (info, tab) => {
   if (info.srcUrl.startsWith(CHROME_PDF_VIEWER)) {
       const downloadResponse = await fetch(info.frameUrl)
       const blob = await downloadResponse.blob()
@@ -13,7 +14,123 @@ const downloadPDF = async (info, tab) => {
         method: 'POST',
         body: formData
       })
+      await reloadUploadOptions()
   }
+}
+
+const reloadUploadOptions = async () => {
+  chrome.contextMenus.removeAll()
+  chrome.contextMenus.create(
+    {
+      id: "kangaroo-download",
+      title: "Download to Kangaroo",
+      contexts: ["frame"],
+    }
+  )
+  chrome.contextMenus.create(
+    {
+      id: "kangaroo-upload",
+      title: "Upload from Kangaroo",
+      contexts: ["all"],
+    }
+  )
+  const files = await getFilesFromS3()
+  await chrome.storage.local.set({'cloud_files': files})
+  files.map(({name, id}) => {
+    chrome.contextMenus.create({
+      title: name,
+      id: `kangaroo-upload-${id}`,
+      parentId: 'kangaroo-upload',
+      contexts: ['all']
+    })
+  })
+}
+
+const queueUpload = async (info, tab) => {
+  const object = {}
+  const tabUrl = tab.url.match(/\:\/\/([^\/?#]+)(?:[\/?#]|$)/i)[1];
+  const currentlyStored = (await chrome.storage.local.get(tabUrl))[tabUrl] || []
+  object[tabUrl] = [...currentlyStored, info.menuItemId]
+  return chrome.storage.local.set(object)
+}
+
+const downloadFile = async (info, tab) => {
+  if (true) {
+    await downloadAndReuploadPdf(info, tab)
+  } else {
+    // Sent file link to lambda for download
+  }
+}
+
+const handleMenuClick = async (info, tab) => {
+  if (await fetchAuth()) {
+    switch (info.menuItemId) {
+      case 'kangaroo-download':
+        await downloadFile(info, tab)
+        break;
+      case 'kangaroo-upload':
+        break;
+      default:
+        debugger
+        if (info.menuItemId.startsWith('kangaroo-upload-')) {
+          await queueUpload(info, tab);
+        }
+        break;
+    }
+  } else {
+    console.error("error")
+  }
+}
+
+const fetchSessionTokenFromKangaroo = () => {
+  return sessionStorage.getItem('user')
+}
+
+const fetchSessionToken = async () => {
+  const tab = await getKangarooTab()
+  try {
+    if (tab) {
+      const [scriptResponse] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: fetchSessionTokenFromKangaroo
+      })
+      const { accessToken, client, email, tokenExpiresAt } = JSON.parse(scriptResponse.result)
+      await chrome.storage.local.set({'auth_header': {
+        'access-token': accessToken,
+        'client': client,
+        'expiry': tokenExpiresAt,
+        'uid': email,
+        'token-type': 'Bearer',
+      }})
+      return true
+    }
+  } catch (e) {
+    console.log(e || "Ran into an error finding the access token")
+    return false
+  }
+}
+
+const getKangarooTab = async () => {
+  const tabs = await chrome.tabs.query({})
+  for (let i = 0; i < tabs.length; i++) {
+    const url = tabs[i].url
+    if (url?.startsWith(BASE_URL)) {
+      return tabs[i]
+    }
+  }
+  return null
+}
+
+const fetchAuth = async () => {
+  return fetchSessionToken()
+}
+
+const getFilesFromS3 = async () => {
+  const res = await fetch(`${BASE_URL}/cloud_files`, {
+    headers: await getAuthHeader()
+  });
+  const { files } = await res.json();
+  return files
 }
 
 const getAuthHeader = async () => {
@@ -21,35 +138,25 @@ const getAuthHeader = async () => {
   return storage.auth_header
 }
 
-const getCurrentTab = async () => {
-  const [tab] = await chrome.tabs.query({ currentWindow: true, active: true })
-  return tab
-}
+const retrieveFileFromS3 = async (fileId) => {
+  const res = await fetch(`${BASE_URL}/cloud_files/${fileId}`, {
+    headers: await getAuthHeader()
+  });
+  return res.json();
+};
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.event === "cloud-file-detected") {
     (async () => {
-        const { fileName } = message;
-        const presignUrl = await retrievePresignUrlFromS3(fileName);
-        sendResponse({ status: "ok", url: presignUrl });
+        const { fileId } = message;
+        const file = await retrieveFileFromS3(fileId);
+        debugger
+        sendResponse({ status: "ok", url: file.url, name: file.name, fileType: file.file_type });
       }
     )()
     return true;
   }
 });
 
-const retrievePresignUrlFromS3 = async (fileName) => {
-  const res = await fetch(`${BASE_URL}/get_object?key=${fileName}`);
-  const { url } = await res.json();
-  return url;
-};
-
-chrome.contextMenus.create(
-  {
-    id: "kangaroo",
-    title: "Download to Kangaroo",
-    contexts: ["all"],
-  }
-)
-
-chrome.contextMenus.onClicked.addListener(downloadPDF)
+reloadUploadOptions()
+chrome.contextMenus.onClicked.addListener(handleMenuClick)

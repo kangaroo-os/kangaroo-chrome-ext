@@ -43,12 +43,27 @@ const getFileNames = async () => {
 
 const getCloudFiles = async () => {
   const storage = await chrome.storage.local.get('cloud_files')
-  const cloudFiles = storage['cloud_files']
-  if (!cloudFiles) {
-    alert("failed to get name of files from S3")
+  const cloudFiles = storage.cloud_files
+  if (!cloudFiles || !cloudFiles.length) {
+    if (!cloudFiles) {
+      alert('No cloud files detected. Please sync with the cloud.')
+    }
+    return []
   }
   return JSON.parse(cloudFiles)
 }
+
+// const fileNamesFromS3 = await getFileNames();
+// if (fileNamesFromS3?.some((key) => key === file.name)) {
+//   console.log("cloud file detected");
+//   const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileName: file.name});
+//   if (response.status === 'ok') {
+//     const res = await fetch(response.url)
+//     const blob = await res.blob()
+//     const fileFromS3 = new File([blob], file.name, { type: file.type});
+//     file = fileFromS3
+//   }
+// }
 
 // Maybe prefetch the item first?
 const scanAndReplaceFiles = async (event) => {
@@ -56,21 +71,32 @@ const scanAndReplaceFiles = async (event) => {
   const dT = new DataTransfer();
   for (let i = 0; i < input.files.length; i++) {
     let file = input.files[i];
-    const fileNamesFromS3 = await getFileNames();
-    if (fileNamesFromS3?.some((key) => key === file.name)) {
-      console.log("cloud file detected");
-      const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileName: file.name});
-      if (response.status === 'ok') {
-        const res = await fetch(response.url)
-        const blob = await res.blob()
-        const fileFromS3 = new File([blob], file.name, { type: file.type});
-        file = fileFromS3
-      }
-    }
     dT.items.add(file);
   }
+  const queuedCloudIds = await retrieveQueuedCloudIds();
+  for (const cloudId of queuedCloudIds) {
+    const { status, url, name, fileType } = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileId: cloudId});
+    if (status === 'ok') {
+      const res = await fetch(url)
+      const blob = await res.blob()
+      const fileFromS3 = new File([blob], name, { type: fileType });
+      dT.items.add(fileFromS3);
+    }
+  }
   input.files = dT.files;
+  await chrome.storage.local.remove(getHostname())
 };
+
+const retrieveQueuedCloudIds = async () => {
+  const hostname = getHostname()
+  const storage = await chrome.storage.local.get(hostname)
+  const contextMenuIds = storage[hostname]
+  return contextMenuIds.map((contextMenuId) => contextMenuId.split('-')[2])
+}
+
+const getHostname = () => {
+  return window.location.href.match(/\:\/\/([^\/?#]+)(?:[\/?#]|$)/i)[1];
+}
 
 const onChange = async (event) => {
   const input = event.target;
@@ -118,12 +144,6 @@ window.onload = () => {
 
   const setupToolset = (inputElem) => {
     inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
-
-    // Accept our hack to use .cloud files
-    const type_of_files = inputElem.getAttribute("accept")
-    if (!!type_of_files) {
-      inputElem.setAttribute('accept', type_of_files.concat(',.cloud'))
-    }
   }
 
   const callback = function (mutationsList, observer) {

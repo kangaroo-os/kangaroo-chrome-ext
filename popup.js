@@ -1,53 +1,71 @@
 const BASE_URL = "http://localhost:3000";
 
-const tellContentScriptToSyncFiles = async () => {
-  const tab = await getCurrentTab()
-  await chrome.tabs.sendMessage(tab.id, {event: "sync-files" });
-};
+// chrome.runtime.onMessage.addListener(
+//   function(request, sender, sendResponse) {
+//     if (request.event === "check-auth") {
+//       (async () => {
+//         const foundSessionToken = !!(await fetchSessionToken())
+//         sendResponse({ result: foundSessionToken })
+//       })();
+//     }
+//     debugger
+//     return true
+//   }
+// );
 
-const fetchSessionTokenFromKangaroo = () => {
-  return sessionStorage.getItem('user')
-}
+// const fetchSessionTokenFromKangaroo = () => {
+//   return sessionStorage.getItem('user')
+// }
 
-const fetchSessionToken = async () => {
-  const tab = await getKangarooTab()
-  if (tab) {
-    const [scriptResponse] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      function: fetchSessionTokenFromKangaroo
-    })
-    const { accessToken, client, email, tokenExpiresAt } = JSON.parse(scriptResponse.result)
-    await chrome.storage.local.set({'auth_header': {
-      'access-token': accessToken,
-      'client': client,
-      'expiry': tokenExpiresAt,
-      'uid': email,
-      'token-type': 'Bearer',
-    }})
-  }
-}
+// const fetchSessionToken = async () => {
+//   const tab = await getKangarooTab()
+//   try {
+//     if (tab) {
+//       const [scriptResponse] = await chrome.scripting.executeScript({
+//         target: { tabId: tab.id },
+//         function: fetchSessionTokenFromKangaroo
+//       })
+//       const { accessToken, client, email, tokenExpiresAt } = JSON.parse(scriptResponse.result)
+//       await chrome.storage.local.set({'auth_header': {
+//         'access-token': accessToken,
+//         'client': client,
+//         'expiry': tokenExpiresAt,
+//         'uid': email,
+//         'token-type': 'Bearer',
+//       }})
+//       return true
+//     }
+//   } catch (e) {
+//     console.log(e || "Ran into an error finding the access token")
+//     return false
+//   }
+// }
 
-const getFileNamesFromS3 = async () => {
-  const res = await fetch(`${BASE_URL}/cloud_files`);
-  const { files } = await res.json();
-  return files
-}
+// const getAuthHeader = async () => {
+//   const storage = await chrome.storage.local.get('auth_header')
+//   return storage.auth_header
+// }
 
 const getCurrentTab = async () => {
   const [tab] = await chrome.tabs.query({ currentWindow: true, active: true })
   return tab
 }
 
-const getKangarooTab = async () => {
-  const tabs = await chrome.tabs.query({ currentWindow: true})
-  for (let i = 0; i < tabs.length; i++) {
-    const url = tabs[i].url
-    if (url?.startsWith(BASE_URL)) {
-      return tabs[i]
-    }
-  }
-  return null
-}
+// const getKangarooTab = async () => {
+//   const tabs = await chrome.tabs.query({ currentWindow: true})
+//   for (let i = 0; i < tabs.length; i++) {
+//     const url = tabs[i].url
+//     if (url?.startsWith(BASE_URL)) {
+//       return tabs[i]
+//     }
+//   }
+//   return null
+// }
+
+const tellContentScriptToSyncFiles = async () => {
+  const tab = await getCurrentTab()
+  await chrome.tabs.sendMessage(tab.id, {event: "sync-files" });
+};
 
 window.onload = () => {
   document.getElementById('test-btn').addEventListener("click", async () => {
@@ -55,6 +73,6 @@ window.onload = () => {
       method: "DELETE"
     })
   })
-  // document.getElementById('sync-btn').addEventListener("click", tellContentScriptToSyncFiles);
-  document.getElementById('sync-session-btn').addEventListener("click", fetchSessionToken);
+  document.getElementById('sync-btn').addEventListener("click", tellContentScriptToSyncFiles);
+  // document.getElementById('sync-session-btn').addEventListener("click", fetchSessionToken);
 }
