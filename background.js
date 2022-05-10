@@ -2,85 +2,86 @@ const BASE_URL = 'http://localhost:3000'
 const CHROME_PDF_VIEWER = 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai'
 const CHROME_PDF_VIEWER_NO_PROTOCOL = 'mhjfbmdgcfjbbpaeojofohoefgiehjai'
 
-const downloadAndReuploadPdf = async (info, tab) => {
-  if (info.srcUrl.startsWith(CHROME_PDF_VIEWER)) {
-      const downloadResponse = await fetch(info.frameUrl)
-      const blob = await downloadResponse.blob()
-      const file = new File([blob], tab.title, { type: 'application/pdf' });
-      const formData = new FormData()
-      formData.append('file', file)
-      const postResponse =  await fetch(`${BASE_URL}/cloud_files/upload`, {
-        headers: await getAuthHeader(),
-        method: 'POST',
-        body: formData
-      })
-      await reloadUploadOptions()
-  }
-}
-
-const reloadUploadOptions = async () => {
-  chrome.contextMenus.removeAll()
-  chrome.contextMenus.create(
-    {
-      id: "kangaroo-download",
-      title: "Download to Kangaroo",
-      contexts: ["frame"],
-    }
-  )
-  chrome.contextMenus.create(
-    {
-      id: "kangaroo-upload",
-      title: "Upload from Kangaroo",
-      contexts: ["all"],
-    }
-  )
-  const files = await getFilesFromS3()
-  await chrome.storage.local.set({'cloud_files': files})
-  files.map(({name, id}) => {
-    chrome.contextMenus.create({
-      title: name,
-      id: `kangaroo-upload-${id}`,
-      parentId: 'kangaroo-upload',
-      contexts: ['all']
-    })
+const uploadFileToKangaroo = async (name, url, type) => {
+  const downloadResponse = await fetch(url)
+  const blob = await downloadResponse.blob()
+  const file = new File([blob], name, { type: type });
+  const formData = new FormData()
+  formData.append('file', file)
+  const postResponse =  await fetch(`${BASE_URL}/cloud_files/upload`, {
+    headers: await getAuthHeader(),
+    method: 'POST',
+    body: formData
   })
 }
 
-const queueUpload = async (info, tab) => {
-  const object = {}
-  const tabUrl = tab.url.match(/\:\/\/([^\/?#]+)(?:[\/?#]|$)/i)[1];
-  const currentlyStored = (await chrome.storage.local.get(tabUrl))[tabUrl] || []
-  object[tabUrl] = [...currentlyStored, info.menuItemId]
-  return chrome.storage.local.set(object)
-}
+// const reloadUploadOptions = async () => {
+  // chrome.contextMenus.removeAll()
+  // chrome.contextMenus.create(
+  //   {
+  //     id: "kangaroo-download",
+  //     title: "Download to Kangaroo",
+  //     contexts: ["frame"],
+  //   }
+  // )
+  // chrome.contextMenus.create(
+  //   {
+  //     id: "kangaroo-upload",
+  //     title: "Upload from Kangaroo",
+  //     contexts: ["all"],
+  //   }
+  // )
+  // const files = await getFilesFromS3()
+  // await chrome.storage.local.set({'cloud_files': files})
+  // files.map(({name, id}) => {
+  //   chrome.contextMenus.create({
+  //     title: name,
+  //     id: `kangaroo-upload-${id}`,
+  //     parentId: 'kangaroo-upload',
+  //     contexts: ['all'],
+  //     type: 'checkbox'
+  //   })
+  // })
+// }
 
-const downloadFile = async (info, tab) => {
-  if (true) {
-    await downloadAndReuploadPdf(info, tab)
-  } else {
-    // Sent file link to lambda for download
-  }
-}
+// const queueUpload = async (info, tab) => {
+//   const object = {}
+//   const tabUrl = tab.url.match(/\:\/\/([^\/?#]+)(?:[\/?#]|$)/i)[1];
+//   const currentlyStored = (await chrome.storage.local.get(tabUrl))[tabUrl] || []
+//   if (info.checked) {
+//     object[tabUrl] = [...currentlyStored, info.menuItemId]
+//   } else {
+//     object[tabUrl] = currentlyStored.filter(id => id !== info.menuItemId)
+//   }
+//   return chrome.storage.local.set(object)
+// }
 
-const handleMenuClick = async (info, tab) => {
-  if (await fetchAuth()) {
-    switch (info.menuItemId) {
-      case 'kangaroo-download':
-        await downloadFile(info, tab)
-        break;
-      case 'kangaroo-upload':
-        break;
-      default:
-        debugger
-        if (info.menuItemId.startsWith('kangaroo-upload-')) {
-          await queueUpload(info, tab);
-        }
-        break;
-    }
-  } else {
-    console.error("error")
-  }
-}
+// const downloadFile = async (info, tab) => {
+//   if (true) {
+//     await downloadAndReuploadPdf(info, tab)
+//   } else {
+//     // Sent file link to lambda for download
+//   }
+// }
+
+// const handleMenuClick = async (info, tab) => {
+//   if (await fetchAuth()) {
+//     switch (info.menuItemId) {
+//       case 'kangaroo-download':
+//         await downloadFile(info, tab)
+//         break;
+//       case 'kangaroo-upload':
+//         break;
+//       default:
+//         if (info.menuItemId.startsWith('kangaroo-upload-')) {
+//           await queueUpload(info, tab);
+//         }
+//         break;
+//     }
+//   } else {
+//     console.error("error")
+//   }
+// }
 
 const fetchSessionTokenFromKangaroo = () => {
   return sessionStorage.getItem('user')
@@ -150,13 +151,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
         const { fileId } = message;
         const file = await retrieveFileFromS3(fileId);
-        debugger
         sendResponse({ status: "ok", url: file.url, name: file.name, fileType: file.file_type });
       }
     )()
-    return true;
+  } else if (message.event === 'upload-to-kangaroo-from-url') {
+    (async () => {
+        let { name, url, type } = message;
+        debugger
+        if (!name) {
+          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+          name = tab.title
+        }
+        uploadFileToKangaroo(name, url, type);
+        sendResponse({ status: "ok" });
+      }
+    )()
   }
+  return true;
 });
 
-reloadUploadOptions()
-chrome.contextMenus.onClicked.addListener(handleMenuClick)
+// reloadUploadOptions()
+// chrome.contextMenus.onClicked.addListener(handleMenuClick)
