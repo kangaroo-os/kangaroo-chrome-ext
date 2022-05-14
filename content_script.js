@@ -41,29 +41,24 @@ const BASE_URL = 'http://localhost:3000'
 //   }
 // }
 
-// Maybe prefetch the item first?
-const scanAndReplaceFiles = async (event) => {
-  debugger
-  const input = event.target;
+const loadKangarooFilesToInput = async (event) => {
+  const input = event.target
   const dT = new DataTransfer();
-  for (let i = 0; i < input.files.length; i++) {
-    let file = input.files[i];
-    dT.items.add(file);
-  }
-  // const queuedCloudIds = await retrieveQueuedCloudIds();
-  // for (const cloudId of queuedCloudIds) {
-  //   const { status, url, name, fileType } = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileId: cloudId});
-  //   if (status === 'ok') {
-  //     const res = await fetch(url)
-  //     const blob = await res.blob()
-  //     const fileFromS3 = new File([blob], name, { type: fileType });
-  //     dT.items.add(fileFromS3);
-  //   }
-  // }
-  const fileFromS3 = new File([], 'name', { type: 'application/pdf' });
-  dT.items.add(fileFromS3);
+  const fileSelections = JSON.parse((await chrome.storage.local.get('fileSelection')).fileSelection)
+    // Do promise.all
+  const downloadedFiles = await Promise.all(fileSelections.map(async ({ id }) => {
+    const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileId: id });
+    if (response.status === 'ok') {
+      const res = await fetch(response.url)
+      const blob = await res.blob()
+      const fileFromS3 = new File([blob], response.name, { type: response.fileType });
+      return fileFromS3
+    }
+  }))
+  downloadedFiles.forEach((file) => dT.items.add(file))
+  debugger
   input.files = dT.files;
-};
+}
 
 // const retrieveQueuedCloudIds = async () => {
 //   const hostname = getHostname()
@@ -89,29 +84,25 @@ const onChange = async (event) => {
       // Reset for next time
       input.setAttribute(SHOULD_INTERCEPT, TRUE);
     }
-  } else if (isFileInput(input)) {
-    debugger
-    // await scanAndReplaceFiles(event);
   }
 };
 
-const checkIfCancelled = (event, input) => {
-  if (input.value.length) {
-    alert('Files Loaded');
-  } else {
-    alert('Cancel clicked');
-  }
-  document.body.onfocus = null;
-  const dT = new DataTransfer();
-  const fileFromS3 = new File([0], 'name', { type: 'application/pdf' });
-  dT.items.add(fileFromS3);
-  input.files = dT.files
-  onChange(event);
-}
+// const checkIfCancelled = (event, input) => {
+//   if (input.value.length) {
+//     alert('Files Loaded');
+//   } else {
+//     alert('Cancel clicked');
+//   }
+//   document.body.onfocus = null;
+//   const dT = new DataTransfer();
+//   const fileFromS3 = new File([0], 'name', { type: 'application/pdf' });
+//   dT.items.add(fileFromS3);
+//   input.files = dT.files
+//   onChange(event);
+// }
 
 const onClick = async (event) => {
   const input = event.target
-  debugger
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();
     // document.body.onfocus = () => checkIfCancelled(event, input);
@@ -136,19 +127,21 @@ const onClick = async (event) => {
       const button = document.createElement('button')
       button.innerText = 'Move on'
       button.style = "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;z-index:9999"
-      button.addEventListener('click', (event) => {
-        event.preventDefault()
+      button.addEventListener('click', async (btnEvent) => {
+        btnEvent.preventDefault()
+        await loadKangarooFilesToInput(event)
         input.dispatchEvent(new PointerEvent('click', event));
+        button.remove()
       })
       body.insertBefore(button, document.body.firstChild);
       img.remove()
     })
     body.insertBefore(img, document.body.firstChild);
     input.setAttribute(SHOULD_INTERCEPT, FALSE);
-    
   } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
     // Reset for next time
     input.setAttribute(SHOULD_INTERCEPT, TRUE);
+    await onChange(event);
   }
 }
 
