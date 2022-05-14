@@ -50,16 +50,18 @@ const scanAndReplaceFiles = async (event) => {
     let file = input.files[i];
     dT.items.add(file);
   }
-  const queuedCloudIds = await retrieveQueuedCloudIds();
-  for (const cloudId of queuedCloudIds) {
-    const { status, url, name, fileType } = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileId: cloudId});
-    if (status === 'ok') {
-      const res = await fetch(url)
-      const blob = await res.blob()
-      const fileFromS3 = new File([blob], name, { type: fileType });
-      dT.items.add(fileFromS3);
-    }
-  }
+  // const queuedCloudIds = await retrieveQueuedCloudIds();
+  // for (const cloudId of queuedCloudIds) {
+  //   const { status, url, name, fileType } = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileId: cloudId});
+  //   if (status === 'ok') {
+  //     const res = await fetch(url)
+  //     const blob = await res.blob()
+  //     const fileFromS3 = new File([blob], name, { type: fileType });
+  //     dT.items.add(fileFromS3);
+  //   }
+  // }
+  const fileFromS3 = new File([], 'name', { type: 'application/pdf' });
+  dT.items.add(fileFromS3);
   input.files = dT.files;
 };
 
@@ -82,14 +84,45 @@ const onChange = async (event) => {
       event.stopImmediatePropagation();
       // Don't intercept when we refire the event
       input.setAttribute(SHOULD_INTERCEPT, FALSE);
-      await scanAndReplaceFiles(event);
       input.dispatchEvent(new Event('change', event));
     } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
       // Reset for next time
       input.setAttribute(SHOULD_INTERCEPT, TRUE);
     }
+  } else if (isFileInput(input)) {
+    debugger
+    // await scanAndReplaceFiles(event);
   }
 };
+
+const checkIfCancelled = (event, input) => {
+  if (input.value.length) {
+    alert('Files Loaded');
+  } else {
+    alert('Cancel clicked');
+  }
+  document.body.onfocus = null;
+  const dT = new DataTransfer();
+  const fileFromS3 = new File([0], 'name', { type: 'application/pdf' });
+  dT.items.add(fileFromS3);
+  input.files = dT.files
+  onChange(event);
+}
+
+const onClick = async (event) => {
+  const input = event.target
+  // debugger
+  if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
+    event.stopImmediatePropagation();
+    document.body.onfocus = () => checkIfCancelled(event, input);
+    // event.preventDefault();
+    input.setAttribute(SHOULD_INTERCEPT, FALSE);
+    input.dispatchEvent(new Event('click', event));
+  } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
+    // Reset for next time
+    input.setAttribute(SHOULD_INTERCEPT, TRUE);
+  }
+}
 
 const isFileInput = (elem) => {
   return elem.nodeName === "INPUT" && elem.type === "file";
