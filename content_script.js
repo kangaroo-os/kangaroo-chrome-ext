@@ -111,13 +111,41 @@ const checkIfCancelled = (event, input) => {
 
 const onClick = async (event) => {
   const input = event.target
-  // debugger
+  debugger
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();
-    document.body.onfocus = () => checkIfCancelled(event, input);
-    // event.preventDefault();
+    // document.body.onfocus = () => checkIfCancelled(event, input);
+    event.preventDefault();
+
+    const body = document.body
+    const img = document.createElement('img')
+    img.src = "https://upload.wikimedia.org/wikipedia/commons/9/9d/Circle-icons-download.svg"
+    img.style = "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;z-index:9999"
+    img.addEventListener('click', async () => {
+      const res = await chrome.runtime.sendMessage({
+        event: "get-file-list"
+      });
+      const fileSelection = []
+      res.files.forEach((file) => {
+        const useThisFile = confirm(`Use ${file.name}?`)
+        if (useThisFile) {
+          fileSelection.push(file)
+        }
+      })
+      await chrome.storage.local.set({'fileSelection': JSON.stringify(fileSelection)})
+      const button = document.createElement('button')
+      button.innerText = 'Move on'
+      button.style = "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;z-index:9999"
+      button.addEventListener('click', (event) => {
+        event.preventDefault()
+        input.dispatchEvent(new PointerEvent('click', event));
+      })
+      body.insertBefore(button, document.body.firstChild);
+      img.remove()
+    })
+    body.insertBefore(img, document.body.firstChild);
     input.setAttribute(SHOULD_INTERCEPT, FALSE);
-    input.dispatchEvent(new Event('click', event));
+    
   } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
     // Reset for next time
     input.setAttribute(SHOULD_INTERCEPT, TRUE);
@@ -191,3 +219,7 @@ window.onload = async () => {
     addDownloadButton("position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;")
   }
 };
+
+function delay(time) {
+  return new Promise(resolve => setTimeout(resolve, time));
+}

@@ -147,6 +147,7 @@ const retrieveFileFromS3 = async (fileId) => {
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log(message.event)
   if (message.event === "cloud-file-detected") {
     (async () => {
         const { fileId } = message;
@@ -157,13 +158,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.event === 'upload-to-kangaroo-from-url') {
     (async () => {
         let { name, url, type } = message;
-        debugger
         if (!name) {
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
           name = tab.title
         }
         uploadFileToKangaroo(name, url, type);
         sendResponse({ status: "ok" });
+      }
+    )()
+  } else if (message.event === 'get-file-list') {
+    (async () => {
+        console.log("test")
+        const files = await getFilesFromS3();
+        sendResponse({ status: "ok", files: files });
       }
     )()
   }
