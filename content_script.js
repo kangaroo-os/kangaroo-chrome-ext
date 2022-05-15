@@ -29,7 +29,8 @@ const createCustomUploadDialog = async (event) => {
 
 const handleCustomUploadDialogClick = async (ogClickEvent, btnEvent) => {
   btnEvent.target.remove()
-  const qualifyingFileData = await getQualifyingFileData()
+  const acceptedExtensions = ogClickEvent.target.getAttribute('accept')
+  const qualifyingFileData = await getQualifyingFileData(acceptedExtensions)
   await createDoneWithCloudFilesButton(ogClickEvent)
   const selectedFiles = promptForFileSelection(qualifyingFileData)
   await saveJsonToLocalStorage('selectedFiles', JSON.stringify(selectedFiles))
@@ -128,39 +129,67 @@ const addDownloadButton = (customStyle) => {
 
 // Keep track of listeners and then remove and reapply once HTML changes (MutationObserver)
 window.onload = async () => {
-  const targetNode = document.querySelector("html");
-  // Options for the observer (which mutations to observe)
-  const config = { attributes: false, childList: true, subtree: true };
+  const div = document.createElement('div')
+  div.style = "position:fixed;width:60%;top:20%;left:20%;margin:auto;height:100%;max-height:60vh;background-color:white;z-index:9999;border:1px solid black;display:flex;flex-wrap:wrap"
+  const outerDiv = document.createElement('div')
+  outerDiv.style = "position:absolute;width:100vw;height:100vh;z-index:10000;background-color:rgba(0,0,0,0.5);"
+  outerDiv.appendChild(div)
+  document.body.insertBefore(outerDiv, document.body.firstChild)
 
-  // Add listeners to new input[type=file] buttons
-  const addListeners = () => {
-    inputButtons = document.querySelectorAll("input[type='file']")
 
-    inputButtons.forEach((inputElem) => {
-      if (inputElem.getAttribute(SHOULD_INTERCEPT) === null) {
-        inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
-        inputElem.addEventListener("click", (event) => onClick(event), true);
-        // inputElem.addEventListener("change", (event) => onChange(event), true);
-        console.log("New input button detected.");
-      }
-    });
-  };
 
-  const callback = function (mutationsList, observer) {
-    addListeners();
-  };
+const files = [
+  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',       'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
+  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
+  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
+  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
+  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
+  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg'
+  ]
+  
+  files.forEach((file) => {
+    const img = document.createElement('img')
+    img.src = file
+    img.style = 'max-height:150px;width:auto;height:auto;'
+    img.addEventListener('click', (e) => e.target.classList.add('selected'))
+    div.appendChild(img)
+  })
+  
+  const cssStyle = document.createElement('style');
+  cssStyle.type = 'text/css';
+  const rules = document.createTextNode(".selected{display:grey}");
+  cssStyle.appendChild(rules);
+  document.head.appendChild(cssStyle);
 
-  // Create an observer instance linked to the callback function
-  const observer = new MutationObserver(callback);
-  // Start observing the target node for configured mutations
-  observer.observe(targetNode, config);
+  // const targetNode = document.querySelector("html");
+  // // Options for the observer (which mutations to observe)
+  // const config = { attributes: false, childList: true, subtree: true };
 
-  if (isChromePDFViewer()) {
-    // Add a download button to the PDF viewer
-    addDownloadButton("position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;")
-  }
+  // // Add listeners to new input[type=file] buttons
+  // const addListeners = () => {
+  //   inputButtons = document.querySelectorAll("input[type='file']")
+
+  //   inputButtons.forEach((inputElem) => {
+  //     if (inputElem.getAttribute(SHOULD_INTERCEPT) === null) {
+  //       inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
+  //       inputElem.addEventListener("click", (event) => onClick(event), true);
+  //       // inputElem.addEventListener("change", (event) => onChange(event), true);
+  //       console.log("New input button detected.");
+  //     }
+  //   });
+  // };
+
+  // const callback = function (mutationsList, observer) {
+  //   addListeners();
+  // };
+
+  // // Create an observer instance linked to the callback function
+  // const observer = new MutationObserver(callback);
+  // // Start observing the target node for configured mutations
+  // observer.observe(targetNode, config);
+
+  // if (isChromePDFViewer()) {
+  //   // Add a download button to the PDF viewer
+  //   addDownloadButton("position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;")
+  // }
 };
-
-function delay(time) {
-  return new Promise(resolve => setTimeout(resolve, time));
-}
