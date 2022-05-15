@@ -3,50 +3,59 @@ const TRUE = 'true'
 const FALSE = 'false'
 const BASE_URL = 'http://localhost:3000'
 
-// chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-//   if (message.event === 'sync-files') {
-//     (async () => {
-//       await syncWithCloud();
-//       sendResponse({status: 'ok'});
-//     })();
-//     return true
-//   }
-// });
+const onClick = async (event) => {
+  const input = event.target
+  if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+    // document.body.onfocus = () => checkIfCancelled(event, input);
+    await createCustomUploadDialog(event)
+    input.setAttribute(SHOULD_INTERCEPT, FALSE);
+  } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
+    // Reset for next time
+    input.setAttribute(SHOULD_INTERCEPT, TRUE);
+    input.dispatchEvent(new Event('change', event))
+  }
+}
 
-// const getFileNames = async () => {
-//   (await getCloudFiles()).map((file) => file.name)
-// }
+const createCustomUploadDialog = async (event) => {
+  const body = document.body
+  const img = document.createElement('img')
+  img.src = "https://upload.wikimedia.org/wikipedia/commons/9/9d/Circle-icons-download.svg"
+  img.style = "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;z-index:9999"
+  img.addEventListener('click', async (btnEvent) => await handleCustomUploadDialogClick(event, btnEvent))
+  body.insertBefore(img, document.body.firstChild);
+}
 
-// const getCloudFiles = async () => {
-//   const storage = await chrome.storage.local.get('cloud_files')
-//   const cloudFiles = storage.cloud_files
-//   if (!cloudFiles || !cloudFiles.length) {
-//     if (!cloudFiles) {
-//       alert('No cloud files detected. Please sync with the cloud.')
-//     }
-//     return []
-//   }
-//   return JSON.parse(cloudFiles)
-// }
+const handleCustomUploadDialogClick = async (ogClickEvent, btnEvent) => {
+  btnEvent.target.remove()
+  const qualifyingFileData = await getQualifyingFileData()
+  await createDoneWithCloudFilesButton(ogClickEvent)
+  const selectedFiles = promptForFileSelection(qualifyingFileData)
+  await saveJsonToLocalStorage('selectedFiles', JSON.stringify(selectedFiles))
+}
 
-// const fileNamesFromS3 = await getFileNames();
-// if (fileNamesFromS3?.some((key) => key === file.name)) {
-//   console.log("cloud file detected");
-//   const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileName: file.name});
-//   if (response.status === 'ok') {
-//     const res = await fetch(response.url)
-//     const blob = await res.blob()
-//     const fileFromS3 = new File([blob], file.name, { type: file.type});
-//     file = fileFromS3
-//   }
-// }
+const createDoneWithCloudFilesButton = async (event) => {
+  const body = document.body
+  const button = document.createElement('button')
+  button.innerText = 'Done with cloud files'
+  button.style = "position: absolute; top: 15px; right: 140px; width: 30px; cursor:pointer;z-index:9999"
+  button.addEventListener('click', async (buttonEvent) => await loadSelectedFilesToInput(event, buttonEvent))
+  body.insertBefore(button, document.body.firstChild);
+}
+
+const loadSelectedFilesToInput = async (ogClickEvent, btnEvent) => {
+  btnEvent.preventDefault()
+  btnEvent.target.remove()
+  await loadKangarooFilesToInput(ogClickEvent)
+  ogClickEvent.target.dispatchEvent(new PointerEvent('click', ogClickEvent));
+}
 
 const loadKangarooFilesToInput = async (event) => {
   const input = event.target
   const dT = new DataTransfer();
-  const fileSelections = JSON.parse((await chrome.storage.local.get('fileSelection')).fileSelection)
-    // Do promise.all
-  const downloadedFiles = await Promise.all(fileSelections.map(async ({ id }) => {
+  const selectedFiles = await retrieveJsonFromLocalStorage('selectedFiles')
+  const downloadedFiles = await Promise.all(selectedFiles.map(async ({ id }) => {
     const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileId: id });
     if (response.status === 'ok') {
       const res = await fetch(response.url)
@@ -56,93 +65,36 @@ const loadKangarooFilesToInput = async (event) => {
     }
   }))
   downloadedFiles.forEach((file) => dT.items.add(file))
-  debugger
   input.files = dT.files;
 }
 
-// const retrieveQueuedCloudIds = async () => {
-//   const hostname = getHostname()
-//   const storage = await chrome.storage.local.get(hostname)
-//   const contextMenuIds = storage[hostname] || []
-//   return contextMenuIds.map((contextMenuId) => contextMenuId.split('-')[2])
-// }
 
-// const getHostname = () => {
-//   return window.location.href.match(/\:\/\/([^\/?#]+)(?:[\/?#]|$)/i)[1];
-// }
+const getQualifyingFileData = async (listOfExtensions = []) => {
+  // TODO retrieve files with qualifying extensions
+  const res = await chrome.runtime.sendMessage({
+    event: "get-file-list"
+  });
+  return res.files
+}
 
-const onChange = async (event) => {
-  const input = event.target;
-  if (isFileInput(input) && hasFiles(input)) {
-    console.log("File input detected.");
-    if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
-      event.stopImmediatePropagation();
-      // Don't intercept when we refire the event
-      input.setAttribute(SHOULD_INTERCEPT, FALSE);
-      input.dispatchEvent(new Event('change', event));
-    } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
-      // Reset for next time
-      input.setAttribute(SHOULD_INTERCEPT, TRUE);
-    }
-  }
-};
+const promptForFileSelection = (files) => {
+  const selectedFiles = []
+  files.forEach((file) => {
+    if (confirm(`Use ${file.name}?`))
+      selectedFiles.push(file)
+  })
+  return selectedFiles
+}
 
-// const checkIfCancelled = (event, input) => {
-//   if (input.value.length) {
-//     alert('Files Loaded');
-//   } else {
-//     alert('Cancel clicked');
-//   }
-//   document.body.onfocus = null;
-//   const dT = new DataTransfer();
-//   const fileFromS3 = new File([0], 'name', { type: 'application/pdf' });
-//   dT.items.add(fileFromS3);
-//   input.files = dT.files
-//   onChange(event);
-// }
+const saveJsonToLocalStorage = async (key, json) => {
+  const obj = {}
+  obj[key] = json
+  return chrome.storage.local.set(obj)
+}
 
-const onClick = async (event) => {
-  const input = event.target
-  if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
-    event.stopImmediatePropagation();
-    // document.body.onfocus = () => checkIfCancelled(event, input);
-    event.preventDefault();
-
-    const body = document.body
-    const img = document.createElement('img')
-    img.src = "https://upload.wikimedia.org/wikipedia/commons/9/9d/Circle-icons-download.svg"
-    img.style = "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;z-index:9999"
-    img.addEventListener('click', async () => {
-      const res = await chrome.runtime.sendMessage({
-        event: "get-file-list"
-      });
-      const fileSelection = []
-      res.files.forEach((file) => {
-        const useThisFile = confirm(`Use ${file.name}?`)
-        if (useThisFile) {
-          fileSelection.push(file)
-        }
-      })
-      await chrome.storage.local.set({'fileSelection': JSON.stringify(fileSelection)})
-      const button = document.createElement('button')
-      button.innerText = 'Move on'
-      button.style = "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;z-index:9999"
-      button.addEventListener('click', async (btnEvent) => {
-        btnEvent.preventDefault()
-        await loadKangarooFilesToInput(event)
-        input.dispatchEvent(new PointerEvent('click', event));
-        button.remove()
-      })
-      body.insertBefore(button, document.body.firstChild);
-      img.remove()
-    })
-    body.insertBefore(img, document.body.firstChild);
-    input.setAttribute(SHOULD_INTERCEPT, FALSE);
-  } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
-    // Reset for next time
-    input.setAttribute(SHOULD_INTERCEPT, TRUE);
-    await onChange(event);
-  }
+const retrieveJsonFromLocalStorage = async (key) => {
+  const storage = await chrome.storage.local.get(key)
+  return JSON.parse(storage[key])
 }
 
 const isFileInput = (elem) => {
@@ -186,17 +138,13 @@ window.onload = async () => {
 
     inputButtons.forEach((inputElem) => {
       if (inputElem.getAttribute(SHOULD_INTERCEPT) === null) {
-        setupToolset(inputElem)
+        inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
         inputElem.addEventListener("click", (event) => onClick(event), true);
-        inputElem.addEventListener("change", (event) => onChange(event), true);
+        // inputElem.addEventListener("change", (event) => onChange(event), true);
         console.log("New input button detected.");
       }
     });
   };
-
-  const setupToolset = (inputElem) => {
-    inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
-  }
 
   const callback = function (mutationsList, observer) {
     addListeners();

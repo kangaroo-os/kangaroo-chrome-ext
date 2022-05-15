@@ -15,74 +15,6 @@ const uploadFileToKangaroo = async (name, url, type) => {
   })
 }
 
-// const reloadUploadOptions = async () => {
-  // chrome.contextMenus.removeAll()
-  // chrome.contextMenus.create(
-  //   {
-  //     id: "kangaroo-download",
-  //     title: "Download to Kangaroo",
-  //     contexts: ["frame"],
-  //   }
-  // )
-  // chrome.contextMenus.create(
-  //   {
-  //     id: "kangaroo-upload",
-  //     title: "Upload from Kangaroo",
-  //     contexts: ["all"],
-  //   }
-  // )
-  // const files = await getFilesFromS3()
-  // await chrome.storage.local.set({'cloud_files': files})
-  // files.map(({name, id}) => {
-  //   chrome.contextMenus.create({
-  //     title: name,
-  //     id: `kangaroo-upload-${id}`,
-  //     parentId: 'kangaroo-upload',
-  //     contexts: ['all'],
-  //     type: 'checkbox'
-  //   })
-  // })
-// }
-
-// const queueUpload = async (info, tab) => {
-//   const object = {}
-//   const tabUrl = tab.url.match(/\:\/\/([^\/?#]+)(?:[\/?#]|$)/i)[1];
-//   const currentlyStored = (await chrome.storage.local.get(tabUrl))[tabUrl] || []
-//   if (info.checked) {
-//     object[tabUrl] = [...currentlyStored, info.menuItemId]
-//   } else {
-//     object[tabUrl] = currentlyStored.filter(id => id !== info.menuItemId)
-//   }
-//   return chrome.storage.local.set(object)
-// }
-
-// const downloadFile = async (info, tab) => {
-//   if (true) {
-//     await downloadAndReuploadPdf(info, tab)
-//   } else {
-//     // Sent file link to lambda for download
-//   }
-// }
-
-// const handleMenuClick = async (info, tab) => {
-//   if (await fetchAuth()) {
-//     switch (info.menuItemId) {
-//       case 'kangaroo-download':
-//         await downloadFile(info, tab)
-//         break;
-//       case 'kangaroo-upload':
-//         break;
-//       default:
-//         if (info.menuItemId.startsWith('kangaroo-upload-')) {
-//           await queueUpload(info, tab);
-//         }
-//         break;
-//     }
-//   } else {
-//     console.error("error")
-//   }
-// }
-
 const fetchSessionTokenFromKangaroo = () => {
   return sessionStorage.getItem('user')
 }
@@ -176,6 +108,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return true;
 });
-
-// reloadUploadOptions()
-// chrome.contextMenus.onClicked.addListener(handleMenuClick)
