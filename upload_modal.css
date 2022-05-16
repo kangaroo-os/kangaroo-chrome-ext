@@ -103,8 +103,8 @@
 .file-container {
   text-align: center;
   vertical-align: center;
-  width: 90px;
-  height: 90px;
+  width: 105px;
+  height: 125px;
   margin: 5px;
   border: 1px solid transparent;
 }
@@ -118,9 +118,7 @@
 
 .file-name {
   color: black;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;  
+  width: 100px;  
 }
 
 .selected {

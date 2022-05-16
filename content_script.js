@@ -1,185 +1,243 @@
 const SHOULD_INTERCEPT = "kangaroo-intercept";
-const TRUE = 'true'
-const FALSE = 'false'
-const BASE_URL = 'http://localhost:3000'
-const DEFAULT_ICON_URL = chrome.runtime.getURL('assets/file_icon.png')
+const TRUE = "true";
+const FALSE = "false";
+const BASE_URL = "http://localhost:3000";
+const DEFAULT_ICON_URL = chrome.runtime.getURL("assets/file_icon.png");
 
 const onClick = async (event) => {
-  const input = event.target
+  const input = event.target;
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();
     event.preventDefault();
-    await createCustomUploadDialog(event)
+    await createCustomUploadDialog(event);
     input.setAttribute(SHOULD_INTERCEPT, FALSE);
-  } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
+  } else if (input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
     // Reset for next time
     input.setAttribute(SHOULD_INTERCEPT, TRUE);
   }
-}
+};
 
 const onChange = async (event) => {
-  const input = event.target
+  const input = event.target;
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();
     event.preventDefault();
-    await loadKangarooFilesToInput(event, await retrieveJsonFromLocalStorage('selectedFileIds'))
+    await loadKangarooFilesToInput(
+      event,
+      await retrieveFromLocalStorage("selectedFileIds")
+    );
     input.setAttribute(SHOULD_INTERCEPT, FALSE);
-    input.dispatchEvent(new Event('change', event))
-  } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
+    input.dispatchEvent(new Event("change", event));
+  } else if (input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
     // Reset for next time
     input.setAttribute(SHOULD_INTERCEPT, TRUE);
   }
-}
+};
 
 const createCustomUploadDialog = async (event) => {
-  const acceptedExtensions = event.target.getAttribute('accept')
-  const qualifyingFileData = await getQualifyingFileData(acceptedExtensions)
-  await createFileSelectionModal(event, qualifyingFileData)
-}
+  const acceptedExtensions = event.target.getAttribute("accept");
+  const qualifyingFileData = await getQualifyingFileData(acceptedExtensions);
+  await createFileSelectionModal(event, qualifyingFileData);
+};
 
 const loadKangarooFilesToInput = async (event, fileIds) => {
-  const input = event.target
+  const input = event.target;
   const dT = new DataTransfer();
-  const downloadedFiles = await Promise.all(fileIds.map(async (id) => {
-    const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileId: id });
-    if (response.status === 'ok') {
-      const res = await fetch(response.url)
-      const blob = await res.blob()
-      const fileFromS3 = new File([blob], response.name, { type: response.fileType });
-      return fileFromS3
-    }
-  }))
-  downloadedFiles.forEach((file) => dT.items.add(file))
+  const downloadedFiles = await Promise.all(
+    fileIds.map(async (id) => {
+      const response = await chrome.runtime.sendMessage({
+        event: "cloud-file-detected",
+        fileId: id,
+      });
+      if (response.status === "ok") {
+        const res = await fetch(response.url);
+        const blob = await res.blob();
+        const fileFromS3 = new File([blob], response.name, {
+          type: response.fileType,
+        });
+        return fileFromS3;
+      }
+    })
+  );
+  downloadedFiles.forEach((file) => dT.items.add(file));
   for (let i = 0; i < input.files.length; i++) {
-    dT.items.add(input.files[i])
+    dT.items.add(input.files[i]);
   }
-  debugger
   input.files = dT.files;
-}
-
+};
 
 const getQualifyingFileData = async (listOfExtensions = []) => {
   // TODO retrieve files with qualifying extensions
   const res = await chrome.runtime.sendMessage({
-    event: "get-file-list"
+    event: "get-file-list",
   });
-  return res.files
-}
+  return res.files;
+};
 
 const createFileSelectionModal = async (ogClickEvent, files = []) => {
-  const uploadModalRes = await fetch(chrome.runtime.getURL('upload_modal.html'))
-  const uploadModalHTML = await uploadModalRes.text()
+  const uploadModalRes = await fetch(
+    chrome.runtime.getURL("upload_modal.html")
+  );
+  const uploadModalHTML = await uploadModalRes.text();
   // Add stylesheet
-  const link = document.createElement('link')
-  link.rel = 'stylesheet'
-  link.href = chrome.runtime.getURL('upload_modal.css')
-  document.head.appendChild(link)
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = chrome.runtime.getURL("upload_modal.css");
+  document.head.appendChild(link);
   // Add modal
-  const div = document.createElement('div');
+  const div = document.createElement("div");
   div.innerHTML = uploadModalHTML;
-  div.id = 'modal-background'
+  div.id = "modal-background";
   document.body.insertBefore(div, document.body.firstChild);
 
-  files.forEach(({name, id}) => createFileDiv(name, id))
+  const fileDivs = files.map(({ name, id }) => createFileDiv(name, id));
+  fileDivs.forEach((div) => {
+    div.addEventListener("click", async (clickEvent) => {
+      await handleFileClick(ogClickEvent, clickEvent, div)
+    });    
+  });
 
-  document.getElementById('upload-from-computer-btn').addEventListener('click', async () => {
-    await saveSelectionAndOpenNativeModal(ogClickEvent)
-  })
+  document
+    .getElementById("upload-from-computer-btn")
+    .addEventListener("click", async () => {
+      await saveSelectionAndOpenNativeModal(ogClickEvent);
+    });
 
-  document.getElementById('open-files').addEventListener('click', async () => {
-    await saveSelectionAndUpload(ogClickEvent)
-  })
+  document.getElementById("open-files").addEventListener("click", async () => {
+    await saveSelectionAndUpload(ogClickEvent);
+  });
 
-  if (!ogClickEvent.target.getAttribute('multiple')) {
-    document.getElementById('open-files').addEventListener('dblclick', async () => {
-      await saveSelectionAndUpload(ogClickEvent)
-    })
-  }
+  document.getElementById("cancel").addEventListener("click", () => {
+    document.getElementById("modal-background").remove();
+    ogClickEvent.dispatchEvent(new Event("click", ogClickEvent));
+  });
+};
 
-  document.getElementById('cancel').addEventListener('click', () => {
-    document.getElementById('modal-background').remove()
-  })
+const handleFileClick = async (ogClickEvent, clickEvent, div) => {
+  const clickedTimes = parseInt(div.getAttribute('clicks') ?? 0) + 1
+  div.setAttribute('clicks', clickedTimes.toString());
+  setTimeout(async () => {
+    const currentClicks = parseInt(div.getAttribute('clicks') ?? 0)
+    if (currentClicks === 1) {
+      if (!clickEvent.shiftKey) {
+        document.getElementById("modal-background")
+                .querySelectorAll("div .selected")
+                .forEach((node) => node.classList.remove("selected"));
+      }
+      div.classList.toggle("selected");
+    } else if (currentClicks >= 2) {
+      if (!div.classList.contains("selected")) {
+        document.getElementById("modal-background")
+                .querySelectorAll("div .selected")
+                .forEach((node) => node.classList.remove("selected"));
+        div.classList.toggle("selected");
+      }
+      await saveSelectionAndUpload(ogClickEvent);
+    }
+    div.setAttribute('clicks', 0)
+  }, 250);
 }
 
 const saveSelectionAndOpenNativeModal = async (ogClickEvent) => {
-  const selectedFileIds = [...document.querySelectorAll('div .selected')].map((node) => node.id)
-  document.getElementById('modal-background').remove()
-  await saveJsonToLocalStorage('selectedFileIds', selectedFileIds)
-  ogClickEvent.target.dispatchEvent(new PointerEvent('click', ogClickEvent));
+  const selectedFileIds = [...document.querySelectorAll("div .selected")].map(
+    (node) => node.id
+  );
+  document.getElementById("modal-background").remove();
+  await saveToLocalStorage("selectedFileIds", selectedFileIds);
+  ogClickEvent.target.dispatchEvent(new PointerEvent("click", ogClickEvent));
   // Continue onto native file dialog...
-}
+};
 
 const saveSelectionAndUpload = async (ogClickEvent) => {
-  const selectedFileIds = [...document.querySelectorAll('div .selected')].map((node) => node.id)
-  document.getElementById('modal-background').remove()
-  await saveJsonToLocalStorage('selectedFileIds', selectedFileIds)
-  ogClickEvent.target.setAttribute(SHOULD_INTERCEPT, TRUE)
-  ogClickEvent.target.dispatchEvent(new Event('change', ogClickEvent));
+  const selectedFileIds = [...document.querySelectorAll("div .selected")].map(
+    (node) => node.id
+  );
+  document.getElementById("modal-background").remove();
+  await saveToLocalStorage("selectedFileIds", selectedFileIds);
+  ogClickEvent.target.setAttribute(SHOULD_INTERCEPT, TRUE);
+  ogClickEvent.target.dispatchEvent(new Event("change", ogClickEvent));
   // End of the line...
-}
+};
 
 const saveJsonToLocalStorage = async (key, json) => {
-  const obj = {}
-  obj[key] = json
-  return chrome.storage.local.set(obj)
-}
+  const obj = {};
+  obj[key] = json;
+  return chrome.storage.local.set(obj);
+};
 
 const retrieveJsonFromLocalStorage = async (key) => {
-  const storage = await chrome.storage.local.get(key)
+  const storage = await chrome.storage.local.get(key);
+  return JSON.parse(storage[key]);
+};
 
-  // JSON.parse turns [1] into 1
-  if (Array.isArray(storage[key]) && storage[key].length === 1) {
-    return storage[key]
-  }
-  return JSON.parse(storage[key])
-}
+const saveToLocalStorage = async (key, value) => {
+  const obj = {};
+  obj[key] = value;
+  return chrome.storage.local.set(obj);
+};
+
+const retrieveFromLocalStorage = async (key) => {
+  const storage = await chrome.storage.local.get(key);
+  return storage[key];
+};
 
 const isFileInput = (elem) => {
   return elem.nodeName === "INPUT" && elem.type === "file";
-}
+};
 
 const hasFiles = (input) => {
-  return input.files.length > 0
-}
+  return input.files.length > 0;
+};
 
 const isChromePDFViewer = () => {
-  const embed = document.querySelector("[type='application/pdf'][src='about:blank']")
-  return !!embed
-}
+  const embed = document.querySelector(
+    "[type='application/pdf'][src='about:blank']"
+  );
+  return !!embed;
+};
 
 const addDownloadButton = (customStyle) => {
-  const body = document.body
-  const img = document.createElement('img')
-  img.style = customStyle
-  img.src = "https://upload.wikimedia.org/wikipedia/commons/9/9d/Circle-icons-download.svg"
-  img.addEventListener('click', async () => {
+  const body = document.body;
+  const img = document.createElement("img");
+  img.style = customStyle;
+  img.src =
+    "https://upload.wikimedia.org/wikipedia/commons/9/9d/Circle-icons-download.svg";
+  img.addEventListener("click", async () => {
     chrome.runtime.sendMessage({
       event: "upload-to-kangaroo-from-url",
       name: null,
       url: window.location.href,
       type: "application/pdf",
     });
-  })
-  body.appendChild(img)
-}
+  });
+  body.appendChild(img);
+};
 
 const createFileDiv = (name, id, iconUrl = DEFAULT_ICON_URL) => {
-  const div = document.createElement('div')
-  const img = document.createElement('img')
-  const p = document.createElement('p')
-  div.id = id
-  div.classList.add('file-container')
-  div.appendChild(img)
-  div.appendChild(p)
-  img.classList.add('file-icon')
-  img.src = iconUrl
-  img.draggable = false
-  p.classList.add('file-name')
-  p.innerText = name
+  const div = document.createElement("div");
+  const img = document.createElement("img");
+  const p = document.createElement("p");
+  div.id = id;
+  div.classList.add("file-container");
+  div.appendChild(img);
+  div.appendChild(p);
+  img.classList.add("file-icon");
+  img.src = iconUrl;
+  img.draggable = false;
+  p.classList.add("file-name");
 
-  div.addEventListener('click', () => div.classList.toggle('selected'))
-  document.getElementById('file-display').appendChild(div)
-}
+  p.innerText = truncateText(name, 21);
+
+  document.getElementById("file-display").appendChild(div);
+  return div;
+};
+
+const truncateText = (text, maxLength) => {
+  if (text.length > maxLength) {
+    return text.substring(0, maxLength) + "...";
+  }
+  return text;
+};
 
 // Keep track of listeners and then remove and reapply once HTML changes (MutationObserver)
 window.onload = async () => {
@@ -189,7 +247,7 @@ window.onload = async () => {
 
   // Add listeners to new input[type=file] buttons
   const addListeners = () => {
-    inputButtons = document.querySelectorAll("input[type='file']")
+    inputButtons = document.querySelectorAll("input[type='file']");
 
     inputButtons.forEach((inputElem) => {
       if (inputElem.getAttribute(SHOULD_INTERCEPT) === null) {
@@ -212,6 +270,8 @@ window.onload = async () => {
 
   if (isChromePDFViewer()) {
     // Add a download button to the PDF viewer
-    addDownloadButton("position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;")
+    addDownloadButton(
+      "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;"
+    );
   }
 };
