@@ -2,61 +2,45 @@ const SHOULD_INTERCEPT = "kangaroo-intercept";
 const TRUE = 'true'
 const FALSE = 'false'
 const BASE_URL = 'http://localhost:3000'
+const DEFAULT_ICON_URL = chrome.runtime.getURL('assets/file_icon.png')
 
 const onClick = async (event) => {
   const input = event.target
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();
     event.preventDefault();
-    // document.body.onfocus = () => checkIfCancelled(event, input);
     await createCustomUploadDialog(event)
     input.setAttribute(SHOULD_INTERCEPT, FALSE);
   } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
     // Reset for next time
     input.setAttribute(SHOULD_INTERCEPT, TRUE);
+  }
+}
+
+const onChange = async (event) => {
+  const input = event.target
+  if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+    await loadKangarooFilesToInput(event, await retrieveJsonFromLocalStorage('selectedFileIds'))
+    input.setAttribute(SHOULD_INTERCEPT, FALSE);
     input.dispatchEvent(new Event('change', event))
+  } else if(input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
+    // Reset for next time
+    input.setAttribute(SHOULD_INTERCEPT, TRUE);
   }
 }
 
 const createCustomUploadDialog = async (event) => {
-  const body = document.body
-  const img = document.createElement('img')
-  img.src = "https://upload.wikimedia.org/wikipedia/commons/9/9d/Circle-icons-download.svg"
-  img.style = "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;z-index:9999"
-  img.addEventListener('click', async (btnEvent) => await handleCustomUploadDialogClick(event, btnEvent))
-  body.insertBefore(img, document.body.firstChild);
-}
-
-const handleCustomUploadDialogClick = async (ogClickEvent, btnEvent) => {
-  btnEvent.target.remove()
-  const acceptedExtensions = ogClickEvent.target.getAttribute('accept')
+  const acceptedExtensions = event.target.getAttribute('accept')
   const qualifyingFileData = await getQualifyingFileData(acceptedExtensions)
-  await createDoneWithCloudFilesButton(ogClickEvent)
-  const selectedFiles = promptForFileSelection(qualifyingFileData)
-  await saveJsonToLocalStorage('selectedFiles', JSON.stringify(selectedFiles))
+  await createFileSelectionModal(event, qualifyingFileData)
 }
 
-const createDoneWithCloudFilesButton = async (event) => {
-  const body = document.body
-  const button = document.createElement('button')
-  button.innerText = 'Done with cloud files'
-  button.style = "position: absolute; top: 15px; right: 140px; width: 30px; cursor:pointer;z-index:9999"
-  button.addEventListener('click', async (buttonEvent) => await loadSelectedFilesToInput(event, buttonEvent))
-  body.insertBefore(button, document.body.firstChild);
-}
-
-const loadSelectedFilesToInput = async (ogClickEvent, btnEvent) => {
-  btnEvent.preventDefault()
-  btnEvent.target.remove()
-  await loadKangarooFilesToInput(ogClickEvent)
-  ogClickEvent.target.dispatchEvent(new PointerEvent('click', ogClickEvent));
-}
-
-const loadKangarooFilesToInput = async (event) => {
+const loadKangarooFilesToInput = async (event, fileIds) => {
   const input = event.target
   const dT = new DataTransfer();
-  const selectedFiles = await retrieveJsonFromLocalStorage('selectedFiles')
-  const downloadedFiles = await Promise.all(selectedFiles.map(async ({ id }) => {
+  const downloadedFiles = await Promise.all(fileIds.map(async (id) => {
     const response = await chrome.runtime.sendMessage({event: 'cloud-file-detected', fileId: id });
     if (response.status === 'ok') {
       const res = await fetch(response.url)
@@ -66,6 +50,10 @@ const loadKangarooFilesToInput = async (event) => {
     }
   }))
   downloadedFiles.forEach((file) => dT.items.add(file))
+  for (let i = 0; i < input.files.length; i++) {
+    dT.items.add(input.files[i])
+  }
+  debugger
   input.files = dT.files;
 }
 
@@ -78,13 +66,56 @@ const getQualifyingFileData = async (listOfExtensions = []) => {
   return res.files
 }
 
-const promptForFileSelection = (files) => {
-  const selectedFiles = []
-  files.forEach((file) => {
-    if (confirm(`Use ${file.name}?`))
-      selectedFiles.push(file)
+const createFileSelectionModal = async (ogClickEvent, files = []) => {
+  const uploadModalRes = await fetch(chrome.runtime.getURL('upload_modal.html'))
+  const uploadModalHTML = await uploadModalRes.text()
+  // Add stylesheet
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = chrome.runtime.getURL('upload_modal.css')
+  document.head.appendChild(link)
+  // Add modal
+  const div = document.createElement('div');
+  div.innerHTML = uploadModalHTML;
+  div.id = 'modal-background'
+  document.body.insertBefore(div, document.body.firstChild);
+
+  files.forEach(({name, id}) => createFileDiv(name, id))
+
+  document.getElementById('upload-from-computer-btn').addEventListener('click', async () => {
+    await saveSelectionAndOpenNativeModal(ogClickEvent)
   })
-  return selectedFiles
+
+  document.getElementById('open-files').addEventListener('click', async () => {
+    await saveSelectionAndUpload(ogClickEvent)
+  })
+
+  if (!ogClickEvent.target.getAttribute('multiple')) {
+    document.getElementById('open-files').addEventListener('dblclick', async () => {
+      await saveSelectionAndUpload(ogClickEvent)
+    })
+  }
+
+  document.getElementById('cancel').addEventListener('click', () => {
+    document.getElementById('modal-background').remove()
+  })
+}
+
+const saveSelectionAndOpenNativeModal = async (ogClickEvent) => {
+  const selectedFileIds = [...document.querySelectorAll('div .selected')].map((node) => node.id)
+  document.getElementById('modal-background').remove()
+  await saveJsonToLocalStorage('selectedFileIds', selectedFileIds)
+  ogClickEvent.target.dispatchEvent(new PointerEvent('click', ogClickEvent));
+  // Continue onto native file dialog...
+}
+
+const saveSelectionAndUpload = async (ogClickEvent) => {
+  const selectedFileIds = [...document.querySelectorAll('div .selected')].map((node) => node.id)
+  document.getElementById('modal-background').remove()
+  await saveJsonToLocalStorage('selectedFileIds', selectedFileIds)
+  ogClickEvent.target.setAttribute(SHOULD_INTERCEPT, TRUE)
+  ogClickEvent.target.dispatchEvent(new Event('change', ogClickEvent));
+  // End of the line...
 }
 
 const saveJsonToLocalStorage = async (key, json) => {
@@ -95,6 +126,11 @@ const saveJsonToLocalStorage = async (key, json) => {
 
 const retrieveJsonFromLocalStorage = async (key) => {
   const storage = await chrome.storage.local.get(key)
+
+  // JSON.parse turns [1] into 1
+  if (Array.isArray(storage[key]) && storage[key].length === 1) {
+    return storage[key]
+  }
   return JSON.parse(storage[key])
 }
 
@@ -127,69 +163,55 @@ const addDownloadButton = (customStyle) => {
   body.appendChild(img)
 }
 
+const createFileDiv = (name, id, iconUrl = DEFAULT_ICON_URL) => {
+  const div = document.createElement('div')
+  const img = document.createElement('img')
+  const p = document.createElement('p')
+  div.id = id
+  div.classList.add('file-container')
+  div.appendChild(img)
+  div.appendChild(p)
+  img.classList.add('file-icon')
+  img.src = iconUrl
+  img.draggable = false
+  p.classList.add('file-name')
+  p.innerText = name
+
+  div.addEventListener('click', () => div.classList.toggle('selected'))
+  document.getElementById('file-display').appendChild(div)
+}
+
 // Keep track of listeners and then remove and reapply once HTML changes (MutationObserver)
 window.onload = async () => {
-  const div = document.createElement('div')
-  div.style = "position:fixed;width:60%;top:20%;left:20%;margin:auto;height:100%;max-height:60vh;background-color:white;z-index:9999;border:1px solid black;display:flex;flex-wrap:wrap"
-  const outerDiv = document.createElement('div')
-  outerDiv.style = "position:absolute;width:100vw;height:100vh;z-index:10000;background-color:rgba(0,0,0,0.5);"
-  outerDiv.appendChild(div)
-  document.body.insertBefore(outerDiv, document.body.firstChild)
+  const targetNode = document.querySelector("html");
+  // Options for the observer (which mutations to observe)
+  const config = { attributes: false, childList: true, subtree: true };
 
+  // Add listeners to new input[type=file] buttons
+  const addListeners = () => {
+    inputButtons = document.querySelectorAll("input[type='file']")
 
+    inputButtons.forEach((inputElem) => {
+      if (inputElem.getAttribute(SHOULD_INTERCEPT) === null) {
+        inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
+        inputElem.addEventListener("click", (event) => onClick(event), true);
+        inputElem.addEventListener("change", (event) => onChange(event), true);
+        console.log("New input button detected.");
+      }
+    });
+  };
 
-const files = [
-  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',       'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
-  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
-  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
-  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
-  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg',
-  'https://thumbs.dreamstime.com/b/file-icon-vector-isolated-white-background-sign-transparent-134059140.jpg'
-  ]
-  
-  files.forEach((file) => {
-    const img = document.createElement('img')
-    img.src = file
-    img.style = 'max-height:150px;width:auto;height:auto;'
-    img.addEventListener('click', (e) => e.target.classList.add('selected'))
-    div.appendChild(img)
-  })
-  
-  const cssStyle = document.createElement('style');
-  cssStyle.type = 'text/css';
-  const rules = document.createTextNode(".selected{display:grey}");
-  cssStyle.appendChild(rules);
-  document.head.appendChild(cssStyle);
+  const callback = function (mutationsList, observer) {
+    addListeners();
+  };
 
-  // const targetNode = document.querySelector("html");
-  // // Options for the observer (which mutations to observe)
-  // const config = { attributes: false, childList: true, subtree: true };
+  // Create an observer instance linked to the callback function
+  const observer = new MutationObserver(callback);
+  // Start observing the target node for configured mutations
+  observer.observe(targetNode, config);
 
-  // // Add listeners to new input[type=file] buttons
-  // const addListeners = () => {
-  //   inputButtons = document.querySelectorAll("input[type='file']")
-
-  //   inputButtons.forEach((inputElem) => {
-  //     if (inputElem.getAttribute(SHOULD_INTERCEPT) === null) {
-  //       inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
-  //       inputElem.addEventListener("click", (event) => onClick(event), true);
-  //       // inputElem.addEventListener("change", (event) => onChange(event), true);
-  //       console.log("New input button detected.");
-  //     }
-  //   });
-  // };
-
-  // const callback = function (mutationsList, observer) {
-  //   addListeners();
-  // };
-
-  // // Create an observer instance linked to the callback function
-  // const observer = new MutationObserver(callback);
-  // // Start observing the target node for configured mutations
-  // observer.observe(targetNode, config);
-
-  // if (isChromePDFViewer()) {
-  //   // Add a download button to the PDF viewer
-  //   addDownloadButton("position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;")
-  // }
+  if (isChromePDFViewer()) {
+    // Add a download button to the PDF viewer
+    addDownloadButton("position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;")
+  }
 };

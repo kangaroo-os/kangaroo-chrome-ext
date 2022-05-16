@@ -1,3 +1,130 @@
-body {
+#modal-container > * {
+  background-color: #EBEBEB;
+  z-index: 100000;
+  position: fixed;
+  width: 60%;
+}
+
+#modal-background {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  background-color: rgba(0, 0, 0, 0.7);
+  margin: 1px;
+}
+
+#modal-top-bar {
+  top: 20%;
+  left: 20%;
+  height: 10%;
+  border-radius: 10px 10px 0 0;
+  border: 1px solid black;
+  border-bottom: 0px;
+}
+
+#modal-bottom-bar {
+  top: 80%;
+  left: 20%;
+  height: 10%;
+  border-radius: 0 0 10px 10px;
+  border: 1px solid black;
+  border-top: 0px;
+}
+
+#modal-middle {
+  top: 30%;
+  left: 20%;
+  height: 50%;
+  border: 1px solid black;
+  border-top: 0px;
+  border-bottom: 0px;
+}
+
+#file-display {
+  display: grid;
+  justify-items: center;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-rows: max-content;
+  grid-auto-rows: 80px;
+  grid-gap: 20px;
+  padding-left: 30px;
+  padding-right: 30px;
+  overflow-y: scroll;
+  height: 100%;
+}
+
+#upload-from-computer-btn {
+  text-align: center;
+  vertical-align: center;
+  position: absolute;
+  background-color: #C4C4C4;
+  border-radius: 5px;
+  top: 20px;
+  right: 20px;
+  min-width: 200px;
+  width: 35%;
+  height: 30px;
+  line-height: 30px;
+  cursor: pointer;
+}
+
+#upload-from-computer-text {
+  margin: 0;
+  color: black;
+}
+
+.modal-bottom-btn {
+  text-align: center;
+  vertical-align: center;
+  position: absolute;
+  top: 15px;
+  border-radius: 5px;
+  line-height: 30px;
+  cursor: pointer;
+}
+
+#cancel {
+  right: 125px;
+  width: 85px;
+  height: 30px;
+  vertical-align: center;
+  color: black;
   background-color: white;
+}
+
+#open-files {
+  right: 30px;
+  width: 85px;
+  color: black;
+  background-color: #FDBA74;
+}
+
+.file-container {
+  text-align: center;
+  vertical-align: center;
+  width: 90px;
+  height: 90px;
+  margin: 5px;
+  border: 1px solid transparent;
+}
+
+.file-icon {
+  max-height: 70px;
+  min-height: 60px;
+  width: auto;
+  height: auto;
+}
+
+.file-name {
+  color: black;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;  
+}
+
+.selected {
+  border: 2px solid #93C5FD !important;
+  border-radius: 2px;
+  background-color: #DBEAFE;
 }

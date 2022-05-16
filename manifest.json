@@ -14,16 +14,15 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["script.js"],
+      "resources": ["upload_modal.html", "upload_modal.css", "assets/*.png"],
       "matches": ["<all_urls>"]
     }
   ],
   "permissions": [
     "scripting",
     "storage",
-    "tabs",
-    "webRequest"
+    "tabs"
   ],
-  "action": { "default_popup": "popup.html", "default_icon": "icon.png" },
+  "action": { "default_icon": "icon.png" },
   "host_permissions": ["https://*/*", "http://*/*"]
 }

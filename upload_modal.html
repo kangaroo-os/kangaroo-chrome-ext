@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <script src="upload_modal.js"></script>
-    <link rel="stylesheet" href="upload_modal.css">
-  </head>
-  <h1>Upload Modal</h1>
-  <p id="file-list">File list: </p>
-  <button id="js-btn">Execute JavaScript</button>
+  <body>
+    <div id="modal-container">
+      <div id="modal-top-bar">
+        <div id="upload-from-computer-btn">
+          <p id="upload-from-computer-text">Upload From Computer</p>
+        </div>
+      </div>
+      <div id="modal-middle">
+        <div id="file-display"></div>
+      </div>
+      <div id="modal-bottom-bar">
+        <p id="cancel" class="modal-bottom-btn">Cancel</p>
+        <p id="open-files" class="modal-bottom-btn">Open</p>
+      </div>
+    </div>
+  </body>
 </html>

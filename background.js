@@ -79,30 +79,34 @@ const retrieveFileFromS3 = async (fileId) => {
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log(message.event)
   if (message.event === "cloud-file-detected") {
     (async () => {
-        const { fileId } = message;
-        const file = await retrieveFileFromS3(fileId);
-        sendResponse({ status: "ok", url: file.url, name: file.name, fileType: file.file_type });
+        if (await fetchAuth()) {
+          const { fileId } = message;
+          const file = await retrieveFileFromS3(fileId);
+          sendResponse({ status: "ok", url: file.url, name: file.name, fileType: file.file_type });
+        }
       }
     )()
   } else if (message.event === 'upload-to-kangaroo-from-url') {
     (async () => {
-        let { name, url, type } = message;
-        if (!name) {
-          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-          name = tab.title
+        if (await fetchAuth()) {
+          let { name, url, type } = message;
+          if (!name) {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+            name = tab.title
+          }
+          uploadFileToKangaroo(name, url, type);
+          sendResponse({ status: "ok" });
         }
-        uploadFileToKangaroo(name, url, type);
-        sendResponse({ status: "ok" });
       }
     )()
   } else if (message.event === 'get-file-list') {
     (async () => {
-        console.log("test")
-        const files = await getFilesFromS3();
-        sendResponse({ status: "ok", files: files });
+        if (await fetchAuth()) {
+          const files = await getFilesFromS3();
+          sendResponse({ status: "ok", files: files });
+        }
       }
     )()
   }
