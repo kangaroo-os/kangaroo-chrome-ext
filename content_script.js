@@ -239,6 +239,10 @@ const truncateText = (text, maxLength) => {
   return text;
 };
 
+const pressedKeys = {
+
+}
+
 // Keep track of listeners and then remove and reapply once HTML changes (MutationObserver)
 window.onload = async () => {
   const targetNode = document.querySelector("html");
@@ -267,6 +271,23 @@ window.onload = async () => {
   const observer = new MutationObserver(callback);
   // Start observing the target node for configured mutations
   observer.observe(targetNode, config);
+
+  document.addEventListener("keydown", (e) => {
+    pressedKeys[e.code] = true
+    requiredKeys = ['ShiftLeft', 'MetaLeft', 'KeyS']
+    if (requiredKeys.every(key => pressedKeys[key])) {
+      chrome.runtime.sendMessage({
+        event: "save-current-website",
+        url: window.location.href,
+      });
+    }
+  })
+
+  document.addEventListener("keyup", (e) => {
+    if (pressedKeys[e.code]) {
+      delete pressedKeys[e.code]
+    }
+  })
 
   if (isChromePDFViewer()) {
     // Add a download button to the PDF viewer
