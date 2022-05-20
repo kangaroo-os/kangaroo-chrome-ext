@@ -21,6 +21,7 @@
   "permissions": [
     "scripting",
     "storage",
+    "downloads",
     "tabs"
   ],
   "action": { "default_icon": "icon.png" },
