@@ -15,6 +15,13 @@ const uploadFileToKangaroo = async (name, url, type) => {
   })
 }
 
+// Prevents the file dialogue from showing
+// Automatically downloads the file to Kangaroo
+chrome.downloads.onDeterminingFilename.addListener((e) => {
+  chrome.downloads.cancel(e.id)
+  uploadFileToKangaroo(e.filename, e.finalUrl, e.mime)
+})
+
 const fetchSessionTokenFromKangaroo = () => {
   return sessionStorage.getItem('user')
 }
