@@ -154,36 +154,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 function getUserData() {
   return localStorage.getItem("user_data");
 }
-
-const getAuthFromKangaroo = async () => {
-  const tab = await getKangarooTab();
-  try {
-    if (tab) {
-      const [scriptResponse] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        function: getUserData,
-      });
-      const { id, email } = JSON.parse(
-        scriptResponse.result
-      );
-      const data = await fetch(`${BASE_URL}/auth/chrome_extension/generate_verification_link`, {
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-          },
-          method: "POST",
-          body: JSON.stringify({
-            email: email,
-            id: id,
-          })
-      })
-      const json = await data.json()
-      debugger
-    }
-  } catch (e) {
-    console.log(e || "Ran into an error finding user data");
-    return false;
-  }
-};
-
-(async () => (await getAuthFromKangaroo()))();
