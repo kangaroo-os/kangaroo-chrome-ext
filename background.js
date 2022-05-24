@@ -142,10 +142,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
   } else if (message.event === "save-current-website") {
     (async () => {
-      // if (await fetchAuth()) {
+      if (await fetchAuth()) {
         await uploadLinkToKangaroo(message.url);
         sendResponse({ status: "ok" });
-      // }
+      }
     })();
   }
   return true;
