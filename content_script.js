@@ -191,30 +191,6 @@ const hasFiles = (input) => {
   return input.files.length > 0;
 };
 
-const isChromePDFViewer = () => {
-  const embed = document.querySelector(
-    "[type='application/pdf'][src='about:blank']"
-  );
-  return !!embed;
-};
-
-const addDownloadButton = (customStyle) => {
-  const body = document.body;
-  const img = document.createElement("img");
-  img.style = customStyle;
-  img.src =
-    "https://upload.wikimedia.org/wikipedia/commons/9/9d/Circle-icons-download.svg";
-  img.addEventListener("click", async () => {
-    chrome.runtime.sendMessage({
-      event: "upload-to-kangaroo-from-url",
-      name: null,
-      url: window.location.href,
-      type: "application/pdf",
-    });
-  });
-  body.appendChild(img);
-};
-
 const createFileDiv = (name, id, iconUrl = DEFAULT_ICON_URL) => {
   const div = document.createElement("div");
   const img = document.createElement("img");
@@ -290,11 +266,4 @@ window.onload = async () => {
       delete pressedKeys[e.code]
     }
   })
-
-  if (isChromePDFViewer()) {
-    // Add a download button to the PDF viewer
-    addDownloadButton(
-      "position: absolute; top: 15px; right: 140px; width: 25px; cursor:pointer;"
-    );
-  }
 };
