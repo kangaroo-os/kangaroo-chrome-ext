@@ -24,6 +24,6 @@
     "downloads",
     "tabs"
   ],
-  "action": { "default_icon": "icon.png" },
+  "action": { "default_icon": "assets/laptop.png" },
   "host_permissions": ["https://*/*", "http://*/*"]
 }
