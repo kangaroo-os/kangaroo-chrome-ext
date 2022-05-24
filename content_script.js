@@ -5,6 +5,8 @@ const BASE_URL = "http://localhost:3000";
 const DEFAULT_ICON_URL = chrome.runtime.getURL("assets/file_icon.png");
 
 const onClick = async (event) => {
+  if (window.location.href.startsWith(BASE_URL))
+    return
   const input = event.target;
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();

@@ -62,6 +62,7 @@ const getKangarooTab = async () => {
       return tabs[i];
     }
   }
+  console.error('Could not find Kangaroo tab');
   return null;
 };
 
@@ -103,12 +104,6 @@ const uploadLinkToKangaroo = async (url) => {
   });
 };
 
-
-chrome.downloads.onCreated.addListener(async (e) => {
-  debugger
-  }
-)
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.event === "cloud-file-detected") {
     (async () => {
@@ -147,11 +142,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
   } else if (message.event === "save-current-website") {
     (async () => {
-      if (await fetchAuth()) {
+      // if (await fetchAuth()) {
         await uploadLinkToKangaroo(message.url);
         sendResponse({ status: "ok" });
-      }
+      // }
     })();
   }
   return true;
 });
+
+function getUserData() {
+  return localStorage.getItem("user_data");
+}
+
+const getAuthFromKangaroo = async () => {
+  const tab = await getKangarooTab();
+  try {
+    if (tab) {
+      const [scriptResponse] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: getUserData,
+      });
+      const { id, email } = JSON.parse(
+        scriptResponse.result
+      );
+      const data = await fetch(`${BASE_URL}/auth/chrome_extension/generate_verification_link`, {
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          },
+          method: "POST",
+          body: JSON.stringify({
+            email: email,
+            id: id,
+          })
+      })
+      const json = await data.json()
+      debugger
+    }
+  } catch (e) {
+    console.log(e || "Ran into an error finding user data");
+    return false;
+  }
+};
+
+(async () => (await getAuthFromKangaroo()))();
