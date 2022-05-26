@@ -8,7 +8,7 @@ const uploadFileToKangaroo = async (name, url, type) => {
   const file = new File([blob], name, { type: type })
   const formData = new FormData()
   formData.append('file', file)
-  await fetch(`${BASE_URL}/cloud_files/upload`, {
+  await fetch(`${BASE_URL}/cloud_files`, {
     headers: await getAuthHeader(),
     method: 'POST',
     body: formData,
@@ -17,9 +17,16 @@ const uploadFileToKangaroo = async (name, url, type) => {
 
 // Prevents the file dialogue from showing
 // Automatically downloads the file to Kangaroo
-chrome.downloads.onDeterminingFilename.addListener((e) => {
-  chrome.downloads.cancel(e.id)
-  uploadFileToKangaroo(e.filename, e.finalUrl, e.mime)
+chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+  suggest({
+    filename: item.filename,
+    conflict_action: 'prompt',
+    conflictAction: 'prompt'
+  })
+  if (!!pressedKeys['ShiftLeft']) {
+    chrome.downloads.cancel(item.id)
+    uploadFileToKangaroo(item.filename, item.finalUrl, item.mime)
+  }
 })
 
 const fetchSessionTokenFromKangaroo = () => {
@@ -85,7 +92,7 @@ const retrieveFileFromS3 = async (fileId) => {
 }
 
 const uploadLinkToKangaroo = async (url) => {
-  await fetch(`${BASE_URL}/link_files/upload`, {
+  await fetch(`${BASE_URL}/link_files`, {
     headers: {
       ...(await getAuthHeader()),
       Accept: 'application/json',
@@ -149,8 +156,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       }
     })()
-  } else if (message.event === 'save-current-website') {
-    ;(async () => {
+  } else if (message.event === 'key-pressed') {
+    pressedKeys[message.key] = true
+    handleKeyClicks()
+    console.log(pressedKeys)
+  } else if (message.event === 'key-released') {
+    delete pressedKeys[message.key]
+  }
+  return true
+})
+
+const pressedKeys = {
+
+}
+
+const handleKeyClicks = () => {
+  requiredKeys = ['ShiftLeft', 'MetaLeft', 'KeyS']
+  if (requiredKeys.every(key => pressedKeys[key])) {
+    (async () => {
       if (await fetchSessionToken()) {
         try {
           await uploadLinkToKangaroo(message.url)
@@ -161,8 +184,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     })()
   }
-  return true
-})
+}
 
 function getUserData() {
   return localStorage.getItem('user_data')
