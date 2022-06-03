@@ -5,12 +5,14 @@ const BASE_URL = "http://localhost:3000";
 const DEFAULT_ICON_URL = chrome.runtime.getURL("assets/file_icon.png");
 
 const onClick = async (event) => {
-  if (window.location.href.startsWith(BASE_URL))
-    return
+  // Don't interact with https://kangarooos.com
+  if (window.location.href.startsWith(BASE_URL)) return
+  // Track clicks on file inputs
   const input = event.target;
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();
     event.preventDefault();
+    // Open custom file dialogue and provide files from the Kangaroo Cloud
     await createCustomUploadDialog(event);
     input.setAttribute(SHOULD_INTERCEPT, FALSE);
   } else if (input.getAttribute(SHOULD_INTERCEPT) === FALSE) {
@@ -19,7 +21,10 @@ const onClick = async (event) => {
   }
 };
 
+// High level loading files from Kangaroo to file input if user picked files from Kangaroo's file dialogue
 const onChange = async (event) => {
+  // Don't interact with https://kangarooos.com
+  if (window.location.href.startsWith(BASE_URL)) return
   const input = event.target;
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();
@@ -42,6 +47,7 @@ const createCustomUploadDialog = async (event) => {
   await createFileSelectionModal(event, qualifyingFileData);
 };
 
+// Lower level loading files from Kangaroo to file input if user picked files from Kangaroo's file dialogue
 const loadKangarooFilesToInput = async (event, fileIds) => {
   const input = event.target;
   const dT = new DataTransfer();
@@ -115,6 +121,9 @@ const createFileSelectionModal = async (ogClickEvent, files = []) => {
   });
 };
 
+// Handle selecting files from the modal
+// Single click highlights file
+// Double click selects file
 const handleFileClick = async (ogClickEvent, clickEvent, div) => {
   const clickedTimes = parseInt(div.getAttribute('clicks') ?? 0) + 1
   div.setAttribute('clicks', clickedTimes.toString());
@@ -140,6 +149,7 @@ const handleFileClick = async (ogClickEvent, clickEvent, div) => {
   }, 250);
 }
 
+// User wants to upload from native file dialogue 
 const saveSelectionAndOpenNativeModal = async (ogClickEvent) => {
   const selectedFileIds = [...document.querySelectorAll("div .selected")].map(
     (node) => node.id
@@ -150,6 +160,7 @@ const saveSelectionAndOpenNativeModal = async (ogClickEvent) => {
   // Continue onto native file dialog...
 };
 
+// Find all selected files and upload them
 const saveSelectionAndUpload = async (ogClickEvent) => {
   const selectedFileIds = [...document.querySelectorAll("div .selected")].map(
     (node) => node.id
@@ -159,17 +170,6 @@ const saveSelectionAndUpload = async (ogClickEvent) => {
   ogClickEvent.target.setAttribute(SHOULD_INTERCEPT, TRUE);
   ogClickEvent.target.dispatchEvent(new Event("change", ogClickEvent));
   // End of the line...
-};
-
-const saveJsonToLocalStorage = async (key, json) => {
-  const obj = {};
-  obj[key] = json;
-  return chrome.storage.local.set(obj);
-};
-
-const retrieveJsonFromLocalStorage = async (key) => {
-  const storage = await chrome.storage.local.get(key);
-  return JSON.parse(storage[key]);
 };
 
 const saveToLocalStorage = async (key, value) => {
@@ -191,6 +191,7 @@ const hasFiles = (input) => {
   return input.files.length > 0;
 };
 
+// Create the file icon view for file dialogue
 const createFileDiv = (name, id, iconUrl = DEFAULT_ICON_URL) => {
   const div = document.createElement("div");
   const img = document.createElement("img");
@@ -217,16 +218,21 @@ const truncateText = (text, maxLength) => {
   return text;
 };
 
-const pressedKeys = {
+// <- TRACK KEYS START ->
+KEYS_TO_TRACK = ['Shift', 'Meta', 'S']
 
+const pressedKeys = {
 }
 
 const handleKeyDown = (e) => {
-  pressedKeys[e.code] = true
-  chrome.runtime.sendMessage({
-    event: 'key-pressed',
-    key: e.code
-  })
+  // Only track keys that we need
+  if (KEYS_TO_TRACK.includes(e.key)) {
+    pressedKeys[e.code] = true
+    chrome.runtime.sendMessage({
+      event: 'key-pressed',
+      key: e.code
+    })
+  }
 }
 
 const handleKeyUp = (e) => {
@@ -238,6 +244,7 @@ const handleKeyUp = (e) => {
     })
   }
 }
+// <- TRACK KEYS END ->
 
 // Keep track of listeners and then remove and reapply once HTML changes (MutationObserver)
 window.onload = async () => {
@@ -254,7 +261,6 @@ window.onload = async () => {
         inputElem.setAttribute(SHOULD_INTERCEPT, TRUE);
         inputElem.addEventListener("click", (event) => onClick(event), true);
         inputElem.addEventListener("change", (event) => onChange(event), true);
-        console.log("New input button detected.");
       }
     });
   };
