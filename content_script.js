@@ -1,12 +1,15 @@
 const SHOULD_INTERCEPT = "kangaroo-intercept";
 const TRUE = "true";
 const FALSE = "false";
-const BASE_URL = "http://localhost:3000";
+const DEVELOPMENT_URL = "http://localhost:3000";
+const PRODUCTION_URL = "https://kangarooos.com";
+const BASE_URL = DEVELOPMENT_URL;
 const DEFAULT_ICON_URL = chrome.runtime.getURL("assets/file_icon.png");
 
 const onClick = async (event) => {
   // Don't interact with https://kangarooos.com
-  if (window.location.href.startsWith(BASE_URL)) return
+  const href = window.location.href;
+  if (href.startsWith(DEVELOPMENT_URL) || href.startsWith(PRODUCTION_URL)) return
   // Track clicks on file inputs
   const input = event.target;
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
@@ -24,7 +27,8 @@ const onClick = async (event) => {
 // High level loading files from Kangaroo to file input if user picked files from Kangaroo's file dialogue
 const onChange = async (event) => {
   // Don't interact with https://kangarooos.com
-  if (window.location.href.startsWith(BASE_URL)) return
+  const href = window.location.href;
+  if (href.startsWith(DEVELOPMENT_URL) || href.startsWith(PRODUCTION_URL)) return
   const input = event.target;
   if (input.getAttribute(SHOULD_INTERCEPT) === TRUE) {
     event.stopImmediatePropagation();
