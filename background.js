@@ -68,9 +68,12 @@ const fetchSessionToken = async () => {
 }
 
 const getKangarooTab = async () => {
-  const tabs = await chrome.tabs.query({})
+  const tabs = await chrome.tabs.query({
+    url: `${BASE_URL}/*`,
+  })
   for (let i = 0; i < tabs.length; i++) {
     const url = tabs[i].url
+    // Double check? Don't want reach into other people's stuff.
     if (url?.startsWith(BASE_URL)) {
       return tabs[i]
     }
