@@ -1,6 +1,14 @@
-const BASE_URL = 'http://localhost:3000'
+const DEVELOPMENT_URL = "http://localhost:3000";
+const PRODUCTION_URL = "https://kangarooos.com";
+const BASE_URL = DEVELOPMENT_URL;
 const CHROME_PDF_VIEWER = 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai'
 const CHROME_PDF_VIEWER_NO_PROTOCOL = 'mhjfbmdgcfjbbpaeojofohoefgiehjai'
+
+chrome.tabs.onCreated.addListener(async (tab) => {
+  if (tab.pendingUrl === 'chrome://newtab/') {
+    await chrome.tabs.update({url: `${BASE_URL}/desktop`});
+  }
+})
 
 const uploadFileToKangaroo = async (name, url, type) => {
   const downloadResponse = await fetch(url)

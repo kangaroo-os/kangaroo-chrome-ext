@@ -18,6 +18,9 @@
       "matches": ["<all_urls>"]
     }
   ],
+  "chrome_url_overrides": {
+    "newtab": "dummy.html"
+  },
   "permissions": [
     "scripting",
     "storage",
