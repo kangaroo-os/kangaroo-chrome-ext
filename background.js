@@ -31,7 +31,7 @@ chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
     conflict_action: 'prompt',
     conflictAction: 'prompt'
   })
-  if (!!pressedKeys['ShiftLeft']) {
+  if (!pressedKeys['ShiftLeft'] && await fetchSessionToken()) {
     chrome.downloads.cancel(item.id)
     uploadFileToKangaroo(item.filename, item.finalUrl, item.mime)
   }
