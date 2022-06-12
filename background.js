@@ -25,14 +25,15 @@ const uploadFileToKangaroo = async (name, url, type) => {
 
 // Prevents the file dialogue from showing
 // Automatically downloads the file to Kangaroo
-chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+chrome.downloads.onDeterminingFilename.addListener(async (item, suggest) => {
   suggest({
     filename: item.filename,
     conflict_action: 'prompt',
     conflictAction: 'prompt'
   })
-  if (!pressedKeys['ShiftLeft'] && await fetchSessionToken()) {
+  if (!pressedKeys['ShiftLeft']) {
     chrome.downloads.cancel(item.id)
+    await fetchSessionToken()
     uploadFileToKangaroo(item.filename, item.finalUrl, item.mime)
   }
 })
@@ -62,7 +63,7 @@ const fetchSessionToken = async () => {
       return true
     }
   } catch (e) {
-    console.log(e || 'Ran into an error finding the access token')
+    console.error(e || 'Ran into an error finding the access token')
     return false
   }
 }
