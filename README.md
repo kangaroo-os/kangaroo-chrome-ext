@@ -1,7 +1,10 @@
-Project was never released for public use.
+Project was never released for public use. Since my startup has pivoted, we are releasing what we were working on before.
 # Kangaroo cloud-based desktop's accompanying chrome extension
 
 This extension works in conjuction with kangaroo-os/kangaroo.
+
+## Purpose
+The purpose of this chrome extension was to make using cloud storage easier. For example, this extension allows you to upload files stored from your Kangaroo Desktop to any place that asks for files. Together with Kangaroo Desktop, you'd be able to organize or share files and links all together in a single easy to access location.
 
 ## Key Features
 - Upload files to the internet from your Kangaroo Desktop.
