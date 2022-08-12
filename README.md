@@ -4,8 +4,8 @@ Project was never released for public use.
 This extension works in conjuction with kangaroo-os/kangaroo.
 
 ## Key Features
-- Upload files directly from the Kangaroo Cloud.
-- Download files directly to Kangaroo Cloud.
+- Upload files to the internet from the Kangaroo Cloud.
+- Download files from the internet to Kangaroo Cloud.
 - Replaces newtab with Kangaroo Desktop.
 - Saves links directly to Kangaroo Desktop.
 
