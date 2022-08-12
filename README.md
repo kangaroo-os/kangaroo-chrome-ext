@@ -1,11 +1,11 @@
 Project was never released for public use.
-# Kangaroo Cloud's accompanying chrome extension
+# Kangaroo cloud-based desktop's accompanying chrome extension
 
 This extension works in conjuction with kangaroo-os/kangaroo.
 
 ## Key Features
-- Upload files to the internet from the Kangaroo Cloud.
-- Download files from the internet to Kangaroo Cloud.
+- Upload files to the internet from your Kangaroo Desktop.
+- Download files from the internet to your Kangaroo Desktop.
 - Replaces newtab with Kangaroo Desktop.
 - Saves links directly to Kangaroo Desktop.
 
